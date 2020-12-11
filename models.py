@@ -28,29 +28,30 @@ class EffectRegressorMLP:
         self.iteration = 0
         self.save_path = opts["save"]
 
-    def loss1(self, sample):
+    def predict1(self, sample):
         obs = sample["observation"].to(self.device)
-        effect = sample["effect"].to(self.device)
         action = sample["action"].to(self.device)
 
         h = self.encoder1(obs)
         h_aug = torch.cat([h, action], dim=-1)
         effect_pred = self.decoder1(h_aug)
-        loss = self.criterion(effect_pred, effect)
-        return loss
+        return effect_pred
 
-    def loss2(self, sample):
+    def predict2(self, sample):
         obs = sample["observation"].to(self.device)
-        effect = sample["effect"].to(self.device)
-
         with torch.no_grad():
             h1 = self.encoder1(obs.reshape(-1, 1, obs.shape[2], obs.shape[3]))
         h1 = h1.reshape(obs.shape[0], -1)
         h2 = self.encoder2(obs)
         h_aug = torch.cat([h1, h2], dim=-1)
         effect_pred = self.decoder2(h_aug)
-        loss = self.criterion(effect_pred, effect)
-        return loss
+        return effect_pred
+
+    def loss1(self, sample):
+        return self.criterion(self.predict1(sample), sample["effect"].to(self.device))
+
+    def loss2(self, sample):
+        return self.criterion(self.predict2(sample), sample["effect"].to(self.device))
 
     def one_pass_optimize(self, loader, level):
         running_avg_loss = 0.0
