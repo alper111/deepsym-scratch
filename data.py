@@ -11,8 +11,8 @@ class SingleObjectData(torch.utils.data.Dataset):
 
         self.effect = torch.load("data/img/delta_pix_1.pt")
         self.eff_mu = self.effect.mean(dim=0)
-        self.eff_std = self.effect.std(dim=0)
-        self.effect = (self.effect - self.eff_mu) / (self.eff_std + 1e-6)
+        self.eff_std = self.effect.std(dim=0) + 1e-6
+        self.effect = (self.effect - self.eff_mu) / self.eff_std
 
     def __len__(self):
         return len(self.observation)
@@ -38,8 +38,8 @@ class PairedObjectData(torch.utils.data.Dataset):
         self.effect = torch.load("data/img/delta_pix_3.pt")
         self.effect = self.effect.abs()
         self.eff_mu = self.effect.mean(dim=0)
-        self.eff_std = self.effect.std(dim=0)
-        self.effect = (self.effect - self.eff_mu) / (self.eff_std + 1e-6)
+        self.eff_std = self.effect.std(dim=0) + 1e-6
+        self.effect = (self.effect - self.eff_mu) / self.eff_std
 
     def __len__(self):
         return len(self.effect)
