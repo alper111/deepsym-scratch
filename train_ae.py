@@ -2,12 +2,11 @@ import sys
 
 import torch
 import yaml
-import numpy as np
 from sklearn.tree import DecisionTreeClassifier
 
 import data
 import blocks
-import utils
+
 
 opts = yaml.safe_load(open(sys.argv[1], "r"))
 encoder = blocks.build_encoder(opts, 1)
@@ -52,10 +51,3 @@ tree.fit(category, assigns)
 print(tree.get_depth())
 preds = tree.predict(category)
 print((torch.tensor(preds) == assigns).sum().float() / len(assigns))
-exit()
-
-codes = []
-for c in code:
-    codes.append(utils.binary_to_decimal(c))
-codes = np.array(codes).reshape(5, 10)
-print(codes)
