@@ -5,7 +5,6 @@ import torch
 import numpy as np
 import utils
 import data
-from models import EffectRegressorMLP
 
 parser = argparse.ArgumentParser("Cluster effects.")
 parser.add_argument("-opts", help="option file", type=str, required=True)
@@ -13,11 +12,6 @@ args = parser.parse_args()
 
 opts = yaml.safe_load(open(args.opts, "r"))
 opts["device"] = "cpu"
-device = opts["device"]
-
-model = EffectRegressorMLP(opts)
-model.load(opts["save"], "_best", 2)
-model.encoder2.eval()
 
 transform = data.default_transform(size=opts["size"], affine=False, mean=0.279, std=0.0094)
 trainset = data.PairedObjectData(transform=transform)
