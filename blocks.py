@@ -134,7 +134,7 @@ class Avg(torch.nn.Module):
         return "dims=[" + ", ".join(list(map(str, self.dims))) + "]"
 
 
-def build_encoder(opts, level):
+def build_encoder(opts, level, discrete=True):
     if level == 1:
         code_dim = opts["code1_dim"]
     else:
@@ -152,7 +152,8 @@ def build_encoder(opts, level):
                                      kernel_size=3, stride=stride, padding=1, batch_norm=opts["batch_norm"]))
         encoder.append(Avg([2, 3]))
         encoder.append(MLP([opts["filters"+str(level)][-1], code_dim]))
-        encoder.append(STLayer())
+        if discrete:
+            encoder.append(STLayer())
     else:
         encoder = [
             Flatten([1, 2, 3]),
