@@ -70,7 +70,10 @@ comparisons = []
 with torch.no_grad():
     for i, obj in enumerate(objs):
         cat = model.encoder1(obj.unsqueeze(0).unsqueeze(0))
-        # TODO: this uses true location and size.
+        if "discrete" in opts and not opts["discrete"]:
+            c1 = torch.load(os.path.join(opts["save"], "centroids_1.pth")).to(opts["device"])
+            _, idx = torch.cdist(cat, c1).topk(k=2, largest=False)
+            cat = torch.tensor(utils.decimal_to_binary(idx[0, 1], length=opts["code1_dim"])).unsqueeze(0)
         print("Category: (%d %d), Location: (%.5f %.5f)" % (cat[0, 0], cat[0, 1], locations[indices[i], 0], locations[indices[i], 1]))
         info = {}
         info["name"] = "O{}".format(i+1)
@@ -81,7 +84,13 @@ with torch.no_grad():
         obj_infos.append(info)
         for j in range(len(objs)):
             if i != j:
-                rel = model.encoder2(torch.stack([obj, objs[j]]).unsqueeze(0))[0, 0]
+                rel = model.encoder2(torch.stack([obj, objs[j]]).unsqueeze(0))
+                if "discrete" in opts and not opts["discrete"]:
+                    c2 = torch.load(os.path.join(opts["save"], "centroids_2.pth")).to(opts["device"])
+                    _, idx = torch.cdist(rel, c2).topk(k=2, largest=False)
+                    rel = utils.decimal_to_binary(idx[0, 0], length=opts["code2_dim"])[0]
+                else:
+                    rel = rel[0, 0]
                 if rel == -1:
                     comparisons.append("(relation0 O%d O%d)" % (i+1, j+1))
                 else:
