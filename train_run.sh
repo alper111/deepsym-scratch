@@ -10,4 +10,5 @@ python save_cat.py -opts "$1"
 # transform the learned prediction model into PDDL
 # code by learning decision tree and encoding
 # effect probabilities.
-python learn_rules.py -opts "$1"
+python learn_tree.py -opts "$1"
+python convert_tree.py -opts "$1"
