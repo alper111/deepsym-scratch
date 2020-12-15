@@ -1,8 +1,6 @@
 import os
 import argparse
 import yaml
-from sklearn.tree import DecisionTreeClassifier
-import torch
 import pickle
 import numpy as np
 import utils
@@ -18,16 +16,9 @@ save_name = os.path.join(opts["save"], "domain.pddl")
 if os.path.exists(save_name):
     os.remove(save_name)
 
-category = torch.load(os.path.join(opts["save"], "category.pt"))
-label = torch.load(os.path.join(opts["save"], "label.pt"))
 effect_names = np.load(os.path.join(opts["save"], "effect_names.npy"))
 K = len(effect_names)
-
-tree = DecisionTreeClassifier()
-tree.fit(category, label)
-file = open(os.path.join(opts["save"], "tree.pkl"), "wb")
-pickle.dump(tree, file)
-file.close()
+tree = pickle.load(open(os.path.join(opts["save"], "tree.pkl"), "rb"))
 
 CODE_DIM = 2
 obj_names = {}

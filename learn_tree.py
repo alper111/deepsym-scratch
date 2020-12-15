@@ -1,9 +1,10 @@
 import os
 import argparse
+import pickle
+
 import yaml
-from sklearn.tree import DecisionTreeClassifier
 import torch
-import numpy as np
+from sklearn.tree import DecisionTreeClassifier
 
 parser = argparse.ArgumentParser("learn pddl rules from decision tree.")
 parser.add_argument("-opts", help="option file", type=str, required=True)
@@ -17,10 +18,12 @@ if os.path.exists(save_name):
 
 category = torch.load(os.path.join(opts["save"], "category.pt"))
 label = torch.load(os.path.join(opts["save"], "label.pt"))
-effect_names = np.load(os.path.join(opts["save"], "effect_names.npy"))
-K = len(effect_names)
 
 tree = DecisionTreeClassifier()
 tree.fit(category, label)
 preds = tree.predict(category)
 print((torch.tensor(preds) == label).sum().float() / len(label))
+
+file = open(os.path.join(opts["save"], "tree.pkl"), "wb")
+pickle.dump(tree, file)
+file.close()
