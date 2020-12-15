@@ -1,5 +1,6 @@
 import os
 import argparse
+import time
 
 import torch
 import yaml
@@ -13,6 +14,14 @@ parser.add_argument("-opts", help="option file", type=str, required=True)
 args = parser.parse_args()
 
 opts = yaml.safe_load(open(args.opts, "r"))
+if not os.path.exists(opts["save"]):
+    os.makedirs(opts["save"])
+opts["time"] = time.asctime(time.localtime(time.time()))
+file = open(os.path.join(opts["save"], "opts.yaml"), "w")
+yaml.dump(opts, file)
+file.close()
+print(yaml.dump(opts))
+
 encoder = blocks.build_encoder(opts, 1)
 decoder = blocks.MLP([opts["code1_dim"]] + [opts["hidden_dim"]] * opts["depth"] + [1764]).to("cuda")
 encoder.to("cuda")
