@@ -22,7 +22,7 @@ while not ok:
     ok = True
     centroids, assigns, mse, _ = utils.kmeans(trainset.effect, k=K)
     print(mse)
-    centroids = centroids * (trainset.eff_std + 1e-6) + trainset.eff_mu
+    centroids = centroids * trainset.eff_std + trainset.eff_mu
     effect_names = []
     for i, c_i in enumerate(centroids):
         print("Centroid %d: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f" %
