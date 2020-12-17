@@ -47,7 +47,8 @@ left_img = Y.repeat_interleave(B, 0)
 right_img = Y.repeat(B, 1, 1, 1)
 concat = torch.cat([left_img, right_img], dim=1)
 
-category2 = model.encoder2(concat.to(device))
+with torch.no_grad():
+    category2 = model.encoder2(concat.to(device))
 if "discrete" in opts and not opts["discrete"]:
     centroids, indices, _, _ = utils.kmeans(category2, k=2**opts["code2_dim"])
     torch.save(centroids.cpu(), os.path.join(opts["save"], "centroids_2.pth"))
