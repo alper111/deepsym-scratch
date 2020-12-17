@@ -8,6 +8,7 @@ import utils
 
 parser = argparse.ArgumentParser("learn pddl rules from decision tree.")
 parser.add_argument("-opts", help="option file", type=str, required=True)
+parser.add_argument("-p", help="PPDDL (1) or PDDL (0). Default 1.", default=1, type=int)
 args = parser.parse_args()
 
 opts = yaml.safe_load(open(args.opts, "r"))
@@ -15,6 +16,8 @@ opts = yaml.safe_load(open(args.opts, "r"))
 save_name = os.path.join(opts["save"], "domain.pddl")
 if os.path.exists(save_name):
     os.remove(save_name)
+
+PROBABILISTIC = True if args.p == 1 else False
 
 effect_names = np.load(os.path.join(opts["save"], "effect_names.npy"))
 K = len(effect_names)
@@ -30,10 +33,13 @@ file_loc = os.path.join(opts["save"], "domain.pddl")
 if os.path.exists(file_loc):
     os.remove(file_loc)
 
-pddl_code = utils.tree_to_code(tree, ["f%d" % i for i in range(K)], effect_names, obj_names)
+pddl_code = utils.tree_to_code(tree, effect_names, obj_names, probabilistic=PROBABILISTIC)
 pretext = "(define (domain stack)\n"
-pretext += "\t(:requirements :typing :negative-preconditions :probabilistic-effects :conditional-effects :disjunctive-preconditions)\n"
-pretext += "\t(:predicates"
+pretext += "\t(:requirements :typing :negative-preconditions :conditional-effects :disjunctive-preconditions"
+if PROBABILISTIC:
+    pretext += " :probabilistic-effects"
+pretext += ")"
+pretext += "\n\t(:predicates"
 
 for i in range(K):
     pretext += "\n\t\t(%s) " % effect_names[i]

@@ -52,7 +52,7 @@ def kmeans(x, k, centroids=None, max_iter=None, epsilon=0.01):
     return centroids, next_assigns, prev_mse, it
 
 
-def tree_to_code(tree, feature_names, effect_names, obj_names):
+def tree_to_code(tree, effect_names, obj_names, probabilistic):
     tree_ = tree.tree_
 
     def recurse(node, rules):
@@ -90,29 +90,39 @@ def tree_to_code(tree, feature_names, effect_names, obj_names):
             precond += ")"
 
             print(precond)
-            eff = tree_.value[node][0]
-            effect = ":effect (and (probabilistic"
-            # this shenanigan is needed because probabilities add up to more than one.
-            probs = (eff / eff.sum())
-            probs = (probs * 1000).round().astype(np.int)
-            ptotal = probs.sum()
-            if ptotal > 1000:
-                residual = ptotal - 1000
-                probs[np.argmax(probs)] -= residual
+            counts = tree_.value[node][0]
+            effect = ":effect (and "
+            if probabilistic:
+                effect += "(probabilistic"
+                # this shenanigan is needed because probabilities add up to more than one.
+                probs = (counts / counts.sum())
+                probs = (probs * 1000).round().astype(np.int)
+                ptotal = probs.sum()
+                if ptotal > 1000:
+                    residual = ptotal - 1000
+                    probs[np.argmax(probs)] -= residual
 
-            for i in range(len(eff)):
-                if probs[i] != 1000:
-                    effect += "\n\t\t\t\t 0.%03d " % (probs[i])
-                else:
-                    effect += "\n\t\t\t\t 1.000 "
+                for i in range(len(counts)):
+                    if probs[i] != 1000:
+                        effect += "\n\t\t\t\t 0.%03d " % (probs[i])
+                    else:
+                        effect += "\n\t\t\t\t 1.000 "
 
-                if effect_names[i] == "stacked":
-                    effect += "(and (stacked) (inserted) (instack ?above) (stackloc ?above) (not (stackloc ?below)))"
-                elif effect_names[i] == "inserted":
+                    if effect_names[i] == "stacked":
+                        effect += "(and (stacked) (inserted) (instack ?above) (stackloc ?above) (not (stackloc ?below)))"
+                    elif effect_names[i] == "inserted":
+                        effect += "(and (inserted) (instack ?above) (stackloc ?above) (not (stackloc ?below)))"
+                    else:
+                        effect += "(%s)" % (effect_names[i])
+                effect += ")"
+            else:
+                idx = counts.argmax()
+                if effect_names[idx] == "stacked":
+                    effect += "\n\t\t\t\t (and (stacked) (inserted) (instack ?above) (stackloc ?above) (not (stackloc ?below)))"
+                elif effect_names[idx] == "inserted":
                     effect += "(and (inserted) (instack ?above) (stackloc ?above) (not (stackloc ?below)))"
                 else:
-                    effect += "(%s)" % (effect_names[i])
-            effect += ")"
+                    effect += "\n\t\t\t\t (%s)" % (effect_names[idx])
             effect += "\n\t\t\t\t(not (pickloc ?above)))"
             return np.array([[precond, effect]])
     return recurse(0, [])
