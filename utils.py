@@ -217,6 +217,14 @@ def binary_to_decimal(number):
     return dec_number
 
 
+def in_array(element, array):
+    element_hash = hash(element)
+    for idx in range(len(array)):
+        if element_hash == hash(array[idx]):
+            return True, idx
+    return False, None
+
+
 def return_device():
     if torch.cuda.is_available():
         return torch.device("cuda:0")
