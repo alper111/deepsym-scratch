@@ -29,7 +29,11 @@ for i in range(2**CODE_DIM):
     category = utils.decimal_to_binary(i, length=CODE_DIM)
     obj_names[category] = "objtype{}".format(i)
 
-file_loc = os.path.join(opts["save"], "domain.pddl")
+if args.p == 1:
+    domain_name = "pdomain.pddl"
+else:
+    domain_name = "ddomain.pddl"
+file_loc = os.path.join(opts["save"], domain_name)
 if os.path.exists(file_loc):
     os.remove(file_loc)
 
@@ -72,4 +76,4 @@ print("\t\t:parameters (?obj)", file=open(file_loc, "a"))
 print("\t\t:precondition (not (base))", file=open(file_loc, "a"))
 print("\t\t:effect (and (base) (stacked) (inserted) (not (pickloc ?obj)) (stackloc ?obj))", file=open(file_loc, "a"))
 print("\t)", file=open(file_loc, "a"))
-print(")", file=open(os.path.join(opts["save"], "domain.pddl"), "a"))
+print(")", file=open(file_loc, "a"))
