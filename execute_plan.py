@@ -4,11 +4,12 @@ from simtools.rosutils import RosNode
 
 parser = argparse.ArgumentParser("Parse plan.")
 parser.add_argument("-p", help="plan file", type=str, required=True)
+parser.add_argument("-level", help="same level or not.", type=int, required=True)
 parser.add_argument("-uri", help="master uri. optional", type=str, default="http://localhost:11311")
 args = parser.parse_args()
 
 
-node = RosNode("execute_plan", args.uri, wait_time=2.5)
+node = RosNode("execute_plan", args.uri, wait_time=1.5)
 
 file = open(args.p, "r")
 lines = file.readlines()
@@ -28,6 +29,8 @@ if lines[N+1] == "not found.":
     exit()
 
 base_level = 0.7
+if args.level:
+    base_level += objSizes[objNames.index(lines[N+2].split()[1])]
 for p in lines[N+2:]:
     node.initArmPose()
     _, base, target = p.split()
@@ -38,9 +41,13 @@ for p in lines[N+2:]:
     node.move(target_loc+[1.0, 0., 0., 0., 1.])
     node.move(target_loc+[0.7+0.85*objSizes[target_idx], 0., 0., 0., 1.])
     node.handGraspPose()
-    base_level += objSizes[base_idx]
-    node.move(target_loc+[base_level+objSizes[target_idx]+0.05, 0., 0., 0., 1.])
-    node.move(base_loc+[base_level+objSizes[target_idx]+0.05, 0., 0., 0., 1.])
+    if args.level:
+        node.move(target_loc+[base_level+objSizes[target_idx]+0.05, 0., 0., 0., 1.])
+        node.move(base_loc+[base_level+objSizes[target_idx]+0.05, 0., 0., 0., 1.])
+    else:
+        base_level += objSizes[base_idx]
+        node.move(target_loc+[base_level+objSizes[target_idx]+0.05, 0., 0., 0., 1.])
+        node.move(base_loc+[base_level+objSizes[target_idx]+0.05, 0., 0., 0., 1.])
 
     node.handOpenPose()
     objLocs[target_idx] = objLocs[base_idx]
