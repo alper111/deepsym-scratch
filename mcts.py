@@ -194,7 +194,7 @@ class MCTSNode:
 
 
 class State:
-    def __init__(self, stack=[], inserts=[], picks=[], drops=[], current_base=None, goal=None):
+    def __init__(self, stack=[], inserts=[], picks=[], drops=[], goal=None):
         self.stack = stack
         self.inserts = inserts
         self.picks = picks
@@ -252,7 +252,7 @@ class ForwardDynamics:
         elif act == "put":
             idx1 = int(obj[-1]) - 1
             idx2 = int(state.stack[-1][-1]) - 1
-            x = torch.cat([self.codes1[idx1], self.codes1[idx2], self.codes2[idx1, idx2].unsqueeze(0)], dim=-1).numpy()
+            x = torch.cat([self.codes1[idx2], self.codes1[idx1], self.codes2[idx2, idx1].unsqueeze(0)], dim=-1).numpy()
             eff_prob = self.tree.predict_proba([x])[0]
             effect = np.random.multinomial(1, eff_prob)
             effect = np.argmax(effect)

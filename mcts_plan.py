@@ -10,7 +10,7 @@ import mcts
 
 parser = argparse.ArgumentParser("Make plan.")
 parser.add_argument("-opts", help="option file", type=str, required=True)
-parser.add_argument("-goal", help="goal state", type=str, default="(H3) (S0)")
+parser.add_argument("-goal", help="goal state", type=str, default="(H3) (S4)")
 args = parser.parse_args()
 
 opts = yaml.safe_load(open(args.opts, "r"))
@@ -30,10 +30,10 @@ height = int(goal[0].strip("H()"))
 stack = int(goal[1].strip("S()"))
 
 f = mcts.ForwardDynamics(tree, codes1, codes2, stack_idx, insert_idx)
-x = mcts.State(stack=[], inserts=[], picks=objs, drops=[], current_base=None, goal=(height, stack))
+x = mcts.State(stack=[], inserts=[], picks=objs, drops=[], goal=(height, stack))
 MCTS = mcts.MCTSNode(None, x, x.get_available_actions(), f)
 
-MCTS.run(1000, 1)
+MCTS.run(250, 16)
 
 state, plan, prob = MCTS.plan()
 print("plan probability: %.2f" % prob)
