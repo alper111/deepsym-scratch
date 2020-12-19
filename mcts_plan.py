@@ -33,7 +33,7 @@ f = mcts.ForwardDynamics(tree, codes1, codes2, stack_idx, insert_idx)
 x = mcts.State(stack=[], inserts=[], picks=objs, drops=[], goal=(height, stack))
 MCTS = mcts.MCTSNode(None, x, x.get_available_actions(), f)
 
-MCTS.run(250, 16)
+MCTS.run(2000, 1)
 
 state, plan, prob = MCTS.plan()
 print("plan probability: %.2f" % prob)

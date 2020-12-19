@@ -204,7 +204,7 @@ class State:
     def reward(self):
         height = (len(self.stack)-len(self.inserts))
         if self.goal[0] == height and self.goal[1] == len(self.stack):
-            return 1
+            return 10
         else:
             return 0
 
