@@ -24,6 +24,15 @@ class STLayer(torch.nn.Module):
         return self.func(x)
 
 
+class GumbelSigmoidLayer(torch.nn.Module):
+    def __init__(self, hard=False):
+        super(GumbelSigmoidLayer, self).__init__()
+        self.hard = hard
+
+    def forward(self, x, T=1.0):
+        return gumbel_sigmoid(x, T, self.hard)
+
+
 class Linear(torch.nn.Module):
     """ linear layer with optional batch normalization. """
     def __init__(self, in_features, out_features, std=None, batch_norm=False, gain=None):
@@ -163,3 +172,22 @@ def build_encoder(opts, level, discrete=True):
 
     encoder = torch.nn.Sequential(*encoder)
     return encoder
+
+
+def sample_gumbel_diff(*shape):
+    eps = 1e-20
+    u1 = torch.rand(shape)
+    u2 = torch.rand(shape)
+    diff = torch.log(torch.log(u2+eps)/torch.log(u1+eps)+eps)
+    return diff
+
+
+def gumbel_sigmoid(logits, T=1.0, hard=False):
+    g = sample_gumbel_diff(*logits.shape)
+    g = g.to(logits.device)
+    y = (g + logits) / T
+    s = torch.sigmoid(y)
+    if hard:
+        s_hard = s.round()
+        s = (s_hard - s).detach() + s
+    return s

@@ -169,20 +169,6 @@ def rule_to_code(rule, obj_names):
     return obj1_list, obj2_list, comparison
 
 
-def gumbel_softmax_sample(logits, temp=1.):
-    g = Gumbel(0, 1).sample(logits.shape)
-    y = (g + logits) / temp
-    return torch.softmax(y, dim=-1)
-
-
-def gumbel_softmax(logits, temp=1.):
-    y = gumbel_softmax_sample(logits, temp)
-    ind = torch.argmax(y, dim=-1)
-    y_hard = torch.eye(logits.shape[-1], device=logits.device)[ind]
-    y = (y_hard - y).detach() + y
-    return y
-
-
 def get_parameter_count(model):
     total_num = 0
     for p in model.parameters():
