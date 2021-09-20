@@ -143,7 +143,7 @@ class Avg(torch.nn.Module):
         return "dims=[" + ", ".join(list(map(str, self.dims))) + "]"
 
 
-def build_encoder(opts, level, discrete=True):
+def build_encoder(opts, level, discrete=True, gumbel=False):
     if level == 1:
         code_dim = opts["code1_dim"]
     else:
@@ -162,13 +162,20 @@ def build_encoder(opts, level, discrete=True):
         encoder.append(Avg([2, 3]))
         encoder.append(MLP([opts["filters"+str(level)][-1], code_dim]))
         if discrete:
-            encoder.append(STLayer())
+            if gumbel:
+                encoder.append(GumbelSigmoidLayer(hard=True))
+            else:
+                encoder.append(STLayer())
     else:
         encoder = [
             Flatten([1, 2, 3]),
             MLP([[opts["size"]**2] + [opts["hidden_dim"]]*opts["depth"] + [code_dim]],
-                batch_norm=opts["batch_norm"]),
-            STLayer()]
+                batch_norm=opts["batch_norm"])]
+        if discrete:
+            if gumbel:
+                encoder.append(GumbelSigmoidLayer(hard=True))
+            else:
+                encoder.append(STLayer())
 
     encoder = torch.nn.Sequential(*encoder)
     return encoder
