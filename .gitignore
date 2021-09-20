@@ -149,3 +149,5 @@ last_id
 setup.cfg
 
 *.pth
+
+*.sublime-workspace
