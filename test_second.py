@@ -38,5 +38,5 @@ for i in range(6):
         ax[i, j].set_title(codes[idx].numpy())
 plt.show()
 pp = PdfPages("paired.pdf")
-pp.savefig()
+pp.savefig(fig)
 pp.close()

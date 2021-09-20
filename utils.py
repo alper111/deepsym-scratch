@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from sklearn.tree import _tree
-from torch.distributions import Gumbel
 
 
 def kmeans(x, k, centroids=None, max_iter=None, epsilon=0.01):
