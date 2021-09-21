@@ -30,7 +30,12 @@ class GumbelSigmoidLayer(torch.nn.Module):
         self.hard = hard
 
     def forward(self, x, T=1.0):
-        return gumbel_sigmoid(x, T, self.hard)
+        if self.training:
+            o = gumbel_sigmoid(x, T, self.hard)
+        else:
+            o = gumbel_sigmoid(x, T, hard=True)
+
+        return o
 
 
 class Linear(torch.nn.Module):
@@ -143,7 +148,7 @@ class Avg(torch.nn.Module):
         return "dims=[" + ", ".join(list(map(str, self.dims))) + "]"
 
 
-def build_encoder(opts, level, discrete=True, gumbel=False):
+def build_encoder(opts, level):
     if level == 1:
         code_dim = opts["code1_dim"]
     else:
@@ -161,9 +166,9 @@ def build_encoder(opts, level, discrete=True, gumbel=False):
                                      kernel_size=3, stride=stride, padding=1, batch_norm=opts["batch_norm"]))
         encoder.append(Avg([2, 3]))
         encoder.append(MLP([opts["filters"+str(level)][-1], code_dim]))
-        if discrete:
-            if gumbel:
-                encoder.append(GumbelSigmoidLayer(hard=True))
+        if opts["discrete"]:
+            if opts["gumbel"]:
+                encoder.append(GumbelSigmoidLayer(hard=False))
             else:
                 encoder.append(STLayer())
     else:
@@ -171,9 +176,9 @@ def build_encoder(opts, level, discrete=True, gumbel=False):
             Flatten([1, 2, 3]),
             MLP([[opts["size"]**2] + [opts["hidden_dim"]]*opts["depth"] + [code_dim]],
                 batch_norm=opts["batch_norm"])]
-        if discrete:
-            if gumbel:
-                encoder.append(GumbelSigmoidLayer(hard=True))
+        if opts["discrete"]:
+            if opts["gumbel"]:
+                encoder.append(GumbelSigmoidLayer(hard=False))
             else:
                 encoder.append(STLayer())
 

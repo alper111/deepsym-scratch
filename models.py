@@ -8,10 +8,14 @@ class EffectRegressorMLP:
 
     def __init__(self, opts):
         self.device = torch.device(opts["device"])
+
         if "discrete" not in opts:
             opts["discrete"] = True
-        self.encoder1 = build_encoder(opts, 1, discrete=opts["discrete"]).to(self.device)
-        self.encoder2 = build_encoder(opts, 2, discrete=opts["discrete"]).to(self.device)
+        if "gumbel" not in opts:
+            opts["gumbel"] = False
+
+        self.encoder1 = build_encoder(opts, 1).to(self.device)
+        self.encoder2 = build_encoder(opts, 2).to(self.device)
         self.decoder1 = MLP([opts["code1_dim"] + 3] + [opts["hidden_dim"]] * opts["depth"] + [3]).to(self.device)
         self.decoder2 = MLP([opts["code2_dim"] + opts["code1_dim"]*2] + [opts["hidden_dim"]] * opts["depth"] + [6]).to(self.device)
         self.optimizer1 = torch.optim.Adam(lr=opts["learning_rate1"],
