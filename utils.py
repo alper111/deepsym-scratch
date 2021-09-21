@@ -197,7 +197,7 @@ def binary_to_decimal(number):
     dec_number = 0
     for i, digit in enumerate(reversed(number)):
         multiplier = 2**i
-        if digit == 1:
+        if int(digit) == 1:
             dec_number += multiplier
     return dec_number
 
@@ -261,3 +261,9 @@ def find_objects(img, window_size):
         # sizes = torch.stack(sizes) * 3.47632
         depths = torch.tensor(depths)
     return objects, locations, depths
+
+
+def kl_bernoulli(q, p):
+    eps = 1e-20
+    kl = q*torch.log(q+eps)+(1-q)*torch.log(1-q+eps)+q*torch.log((1-p)/(p+eps)+eps)
+    return kl
