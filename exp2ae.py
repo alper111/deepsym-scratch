@@ -34,6 +34,7 @@ loader = torch.utils.data.DataLoader(trainset, batch_size=opts["batch_size1"], s
 testloader = torch.utils.data.DataLoader(trainset, batch_size=2400, shuffle=False)
 
 criterion = torch.nn.MSELoss()
+prior = torch.tensor(0.1)
 
 for e in range(opts["epoch1"]):
     epoch_loss = 0.0
@@ -41,11 +42,13 @@ for e in range(opts["epoch1"]):
         x = sample["observation"].to("cuda")
         code = encoder(x)
         x_bar = decoder(code).reshape(-1, 1, 42, 42)
-        loss = criterion(x_bar, x)
+        recon_loss = criterion(x_bar, x)
+        kl_loss = utils.kl_bernoulli(code, prior).mean()
+        loss = recon_loss + kl_loss
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        epoch_loss += loss.item()
+        epoch_loss += recon_loss.item()
     print("Epoch: %d, loss: %.5f" % (e+1, epoch_loss / (i+1)))
 
 encoder.eval()
