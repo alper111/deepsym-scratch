@@ -4,6 +4,184 @@ import utils
 from blocks import MLP, build_encoder
 
 
+class DeepSymbolGenerator:
+    """DeepSym model from https://arxiv.org/abs/2012.02532"""
+
+    def __init__(self, encoder: torch.nn.Module, decoder: torch.nn.Module,
+                 subnetworks: list[torch.nn.Module], device: str, lr: float,
+                 path: str) -> torch.nn.Module:
+        """
+        Parameters
+        ----------
+        encoder : torch.nn.Module
+            Encoder network.
+        decoder : torch.nn.Module
+            Decoder network.
+        subnetworks : list of torch.nn.Module
+            Optional list of subnetworks to use their output as input
+            for the decoder.
+        device : str
+            The device of the networks.
+        lr : float
+            Learning rate.
+        path : str
+            Save and load path.
+        """
+        self.device = device
+        self.encoder = encoder
+        self.decoder = decoder
+        self.subnetworks = subnetworks
+
+        self.optimizer = torch.optim.Adam(lr=lr, params=[
+            {"params": self.encoder.parameters()},
+            {"params": self.decoder.parameters()}])
+
+        self.criterion = torch.nn.MSELoss()
+        self.iteration = 0
+        self.path = path
+
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Given an observation, return its encoding with the current
+        encoder (i.e. no subnetwork code).
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The observation tensor.
+
+        Returns
+        -------
+        h : torch.Tensor
+            The code of the given observation.
+        """
+        h = self.encoder(x.to(self.device))
+        return h
+
+    def concat(self, sample: dict) -> torch.Tensor:
+        """
+        Given a sample, return the concatenation of the encoders'
+        output and the action vector.
+
+        Parameters
+        ----------
+        sample : dict
+            The input dictionary. This dict should containt following
+            keys: `observation` and `action`.
+
+        Returns
+        -------
+        z : torch.Tensor
+            The concatenation of the encoder's output, subnetworks'
+            encoders output, and the action vector (i.e. the input
+            of the decoder).
+        """
+        h = []
+        x = sample["observation"]
+        h.append(self.encode(x))
+        for network in self.subnetworks:
+            with torch.no_grad():
+                h.append(network.encode(x))
+        h.append(sample["action"].to(self.device))
+        z = torch.cat(h, dim=-1)
+        return z
+
+    def decode(self, z: torch.Tensor) -> torch.Tensor:
+        """
+        Given a code, return the effect.
+
+        Parameters
+        ----------
+        z : torch.Tensor
+            The code tensor.
+
+        Returns
+        -------
+        e : torch.Tensor
+            The effect tensor.
+        """
+        e = self.decoder(z)
+        return e
+
+    def forward(self, sample):
+        z = self.concat(sample)
+        e = self.decode(z)
+        return z, e
+
+    def loss(self, sample):
+        e_truth = sample["effect"].to(self.device)
+        _, e_pred = self.forward(sample)
+        L = self.criterion(e_pred, e_truth)
+        return L
+
+    def one_pass_optimize(self, loader):
+        avg_loss = 0.0
+        for i, sample in enumerate(loader):
+            self.optimizer.zero_grad()
+            L = self.loss(sample)
+            L.backward()
+            self.optimizer.step()
+            avg_loss += L.item()
+            self.iteration += 1
+        avg_loss /= (i+1)
+        return avg_loss
+
+    def train(self, epoch, loader):
+        best_loss = 1e100
+        for e in range(epoch):
+            epoch_loss = self.one_pass_optimize(loader)
+            if epoch_loss < best_loss:
+                best_loss = epoch_loss
+                self.save("_best")
+            print(f"Epoch: {e+1}, iter: {self.iteration}, loss: {epoch_loss}")
+            self.save("_last")
+
+    def load(self, ext):
+        encoder_path = os.path.join(self.path, "encoder"+ext+".ckpt")
+        decoder_path = os.path.join(self.path, "decoder"+ext+".ckpt")
+        encoder_dict = torch.load(encoder_path)
+        decoder_dict = torch.load(decoder_path)
+        self.encoder.load_state_dict(encoder_dict)
+        self.decoder.load_state_dict(decoder_dict)
+        for network in self.subnetworks:
+            network.load(ext)
+
+    def save(self, ext):
+        encoder_dict = self.encoder.eval().cpu().state_dict()
+        decoder_dict = self.decoder.eval().cpu().state_dict()
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+        encoder_path = os.path.join(self.path, "encoder"+ext+".ckpt")
+        decoder_path = os.path.join(self.path, "decoder"+ext+".ckpt")
+        torch.save(encoder_dict, encoder_path)
+        torch.save(decoder_dict, decoder_path)
+        self.encoder.train().to(self.device)
+        self.decoder.train().to(self.device)
+
+    def print_model(self, space=0, encoder_only=False):
+        utils.print_module(self.encoder, "Encoder", space)
+        if not encoder_only:
+            utils.print_module(self.decoder, "Decoder", space)
+        if len(self.subnetworks) != 0:
+            print("-"*15)
+            print("  Subnetworks  ")
+            print("-"*15)
+
+        tab_length = 4
+        for i, network in enumerate(self.subnetworks):
+            print(" "*tab_length+"%d:" % (i+1))
+            network.print_model(space=space+tab_length, encoder_only=True)
+            print()
+
+    def eval_mode(self):
+        self.encoder.eval()
+        self.decoder.eval()
+
+    def train_mode(self):
+        self.encoder.train()
+        self.decoder.train()
+
+
 class EffectRegressorMLP:
 
     def __init__(self, opts):
