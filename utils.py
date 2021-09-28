@@ -263,3 +263,13 @@ def kl_bernoulli(q, p):
     eps = 1e-20
     kl = q*torch.log(q+eps)+(1-q)*torch.log(1-q+eps)+q*torch.log((1-p)/(p+eps)+eps)
     return kl
+
+
+def print_module(module, name, space):
+    L = len(name)
+    line = " "*space+"-"*(L+4)
+    print(line)
+    print(" "*space+"  "+name+"  ")
+    print(line)
+    module_str = module.__repr__()
+    print("\n".join([" "*space+mstr for mstr in module_str.split("\n")]))
