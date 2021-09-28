@@ -25,17 +25,13 @@ class STLayer(torch.nn.Module):
 
 
 class GumbelSigmoidLayer(torch.nn.Module):
-    def __init__(self, hard=False):
+    def __init__(self, hard=False, T=1.0):
         super(GumbelSigmoidLayer, self).__init__()
         self.hard = hard
+        self.T = T
 
-    def forward(self, x, T=1.0):
-        if self.training:
-            o = gumbel_sigmoid(x, T, self.hard)
-        else:
-            o = gumbel_sigmoid(x, T, hard=True)
-
-        return o
+    def forward(self, x):
+        return gumbel_sigmoid(x, self.T, self.hard)
 
 
 class Linear(torch.nn.Module):
