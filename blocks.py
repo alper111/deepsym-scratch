@@ -164,7 +164,7 @@ def build_encoder(opts, level):
         encoder.append(MLP([opts["filters"+str(level)][-1], code_dim]))
         if opts["discrete"]:
             if opts["gumbel"]:
-                encoder.append(GumbelSigmoidLayer(hard=False))
+                encoder.append(GumbelSigmoidLayer(hard=opts["gumbel_hard"], T=opts["temperature"]))
             else:
                 encoder.append(STLayer())
     else:
@@ -174,7 +174,7 @@ def build_encoder(opts, level):
                 batch_norm=opts["batch_norm"])]
         if opts["discrete"]:
             if opts["gumbel"]:
-                encoder.append(GumbelSigmoidLayer(hard=False))
+                encoder.append(GumbelSigmoidLayer(hard=opts["gumbel_hard"], T=opts["temperature"]))
             else:
                 encoder.append(STLayer())
 
