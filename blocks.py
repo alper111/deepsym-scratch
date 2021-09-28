@@ -144,6 +144,19 @@ class Avg(torch.nn.Module):
         return "dims=[" + ", ".join(list(map(str, self.dims))) + "]"
 
 
+class ChannelWrapper(torch.nn.Module):
+    def __init__(self, model):
+        super(ChannelWrapper, self).__init__()
+        self.model = model
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        x = x.reshape(B*C, 1, H, W)
+        h = self.model(x)
+        h = h.reshape(B, -1)
+        return h
+
+
 def build_encoder(opts, level):
     if level == 1:
         code_dim = opts["code1_dim"]
