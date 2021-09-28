@@ -66,6 +66,7 @@ class PairedObjectData(torch.utils.data.Dataset):
         else:
             sample["observation"] = torch.stack([img_i, img_j])
         sample["effect"] = self.effect[idx]
+        sample["action"] = torch.tensor([1.0])
         return sample
 
 
