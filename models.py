@@ -41,7 +41,7 @@ class EffectRegressorMLP:
         h = self.encoder1(obs)
         h_aug = torch.cat([h, action], dim=-1)
         effect_pred = self.decoder1(h_aug)
-        return effect_pred
+        return h, effect_pred
 
     def predict2(self, sample):
         obs = sample["observation"].to(self.device)
@@ -51,13 +51,15 @@ class EffectRegressorMLP:
         h2 = self.encoder2(obs)
         h_aug = torch.cat([h1, h2], dim=-1)
         effect_pred = self.decoder2(h_aug)
-        return effect_pred
+        return h_aug, effect_pred
 
     def loss1(self, sample):
-        return self.criterion(self.predict1(sample), sample["effect"].to(self.device))
+        _, prediction = self.predict1(sample)
+        return self.criterion(prediction, sample["effect"].to(self.device))
 
     def loss2(self, sample):
-        return self.criterion(self.predict2(sample), sample["effect"].to(self.device))
+        _, prediction = self.predict2(sample)
+        return self.criterion(prediction, sample["effect"].to(self.device))
 
     def one_pass_optimize(self, loader, level):
         running_avg_loss = 0.0
@@ -125,3 +127,15 @@ class EffectRegressorMLP:
         print(decoder)
         print("parameter count: %d" % utils.get_parameter_count(decoder))
         print("="*27)
+
+    def eval_mode(self):
+        self.encoder1.eval()
+        self.encoder2.eval()
+        self.decoder1.eval()
+        self.decoder2.eval()
+
+    def train_mode(self):
+        self.encoder1.train()
+        self.encoder2.train()
+        self.decoder1.train()
+        self.decoder2.train()
