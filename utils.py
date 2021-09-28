@@ -171,11 +171,7 @@ def rule_to_code(rule, obj_names):
 def get_parameter_count(model):
     total_num = 0
     for p in model.parameters():
-        shape = p.shape
-        num = 1
-        for d in shape:
-            num *= d
-        total_num += num
+        total_num += p.shape.numel()
     return total_num
 
 
