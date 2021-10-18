@@ -117,6 +117,25 @@ class ConvBlock(torch.nn.Module):
         return self.block(x)
 
 
+class ConvTransposeBlock(torch.nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, std=None, bias=True,
+                 batch_norm=False):
+        super(ConvTransposeBlock, self).__init__()
+        self.block = [torch.nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
+                                               stride=stride, padding=padding, bias=bias)]
+        if batch_norm:
+            self.block.append(torch.nn.BatchNorm2d(out_channels))
+        self.block.append(torch.nn.ReLU())
+
+        if std is not None:
+            self.block[0].weight.data.normal_(0., std)
+            self.block[0].bias.data.normal_(0., std)
+        self.block = torch.nn.Sequential(*self.block)
+
+    def forward(self, x):
+        return self.block(x)
+
+
 class Flatten(torch.nn.Module):
     def __init__(self, dims):
         super(Flatten, self).__init__()
@@ -130,6 +149,16 @@ class Flatten(torch.nn.Module):
 
     def extra_repr(self):
         return "dims=[" + ", ".join(list(map(str, self.dims))) + "]"
+
+
+class Reshape(torch.nn.Module):
+    def __init__(self, shape):
+        super(Reshape, self).__init__()
+        self.shape = shape
+
+    def forward(self, x):
+        o = x.reshape(self.shape)
+        return o
 
 
 class Avg(torch.nn.Module):
