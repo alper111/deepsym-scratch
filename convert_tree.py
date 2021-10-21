@@ -19,9 +19,11 @@ if os.path.exists(save_name):
 
 PROBABILISTIC = True if args.p == 1 else False
 
-effect_names = np.load(os.path.join(opts["save"], "effect_names.npy"))
-K = len(effect_names)
 tree = pickle.load(open(os.path.join(opts["save"], "tree.pkl"), "rb"))
+
+# effect_names = np.load(os.path.join(opts["save"], "effect_names.npy"))
+effect_names = ["effect%d" % i for i in range(len(tree.tree_.value))]
+K = len(effect_names)
 
 CODE_DIM = 2
 obj_names = {}

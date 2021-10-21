@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.spatial.transform import Rotation
-import matplotlib.pyplot as plt
 
 import comm
 

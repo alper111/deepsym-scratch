@@ -181,11 +181,11 @@ def decimal_to_binary(number, length=None):
         arr.append(number % 2)
         number = number // 2
     arr.append(number)
-    arr = list(map(lambda x: 1 if x == 1 else -1, arr))
+    arr = list(map(lambda x: 1 if x == 1 else 0, arr))
     if length is not None and len(arr) < length:
         pad = length - len(arr)
         for _ in range(pad):
-            arr.append(-1)
+            arr.append(0)
     return tuple(reversed(arr))
 
 
