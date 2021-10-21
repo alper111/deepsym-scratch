@@ -1,5 +1,8 @@
 import os
+import time
+
 import torch
+
 import utils
 from blocks import MLP, build_encoder
 
@@ -9,7 +12,7 @@ class DeepSymbolGenerator:
 
     def __init__(self, encoder: torch.nn.Module, decoder: torch.nn.Module,
                  subnetworks: list[torch.nn.Module], device: str, lr: float,
-                 path: str) -> torch.nn.Module:
+                 path: str, coeff: float = 1.0):
         """
         Parameters
         ----------
@@ -26,8 +29,12 @@ class DeepSymbolGenerator:
             Learning rate.
         path : str
             Save and load path.
+        coeff : float
+            A hyperparameter to increase to speed of convergence when there
+            are lots of zero values in the effect prediction (e.g. tile puzzle).
         """
         self.device = device
+        self.coeff = coeff
         self.encoder = encoder
         self.decoder = decoder
         self.subnetworks = subnetworks
@@ -42,18 +49,18 @@ class DeepSymbolGenerator:
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Given an observation, return its encoding with the current
+        Given a state, return its encoding with the current
         encoder (i.e. no subnetwork code).
 
         Parameters
         ----------
         x : torch.Tensor
-            The observation tensor.
+            The state tensor.
 
         Returns
         -------
         h : torch.Tensor
-            The code of the given observation.
+            The code of the given state.
         """
         h = self.encoder(x.to(self.device))
         return h
@@ -67,7 +74,7 @@ class DeepSymbolGenerator:
         ----------
         sample : dict
             The input dictionary. This dict should containt following
-            keys: `observation` and `action`.
+            keys: `state` and `action`.
 
         Returns
         -------
@@ -77,7 +84,7 @@ class DeepSymbolGenerator:
             of the decoder).
         """
         h = []
-        x = sample["observation"]
+        x = sample["state"]
         h.append(self.encode(x))
         for network in self.subnetworks:
             with torch.no_grad():
@@ -111,11 +118,12 @@ class DeepSymbolGenerator:
     def loss(self, sample):
         e_truth = sample["effect"].to(self.device)
         _, e_pred = self.forward(sample)
-        L = self.criterion(e_pred, e_truth)
+        L = self.criterion(e_pred, e_truth)*self.coeff
         return L
 
     def one_pass_optimize(self, loader):
         avg_loss = 0.0
+        start = time.time()
         for i, sample in enumerate(loader):
             self.optimizer.zero_grad()
             L = self.loss(sample)
@@ -123,17 +131,19 @@ class DeepSymbolGenerator:
             self.optimizer.step()
             avg_loss += L.item()
             self.iteration += 1
+        end = time.time()
         avg_loss /= (i+1)
-        return avg_loss
+        time_elapsed = end-start
+        return avg_loss, time_elapsed
 
     def train(self, epoch, loader):
         best_loss = 1e100
         for e in range(epoch):
-            epoch_loss = self.one_pass_optimize(loader)
+            epoch_loss, time_elapsed = self.one_pass_optimize(loader)
             if epoch_loss < best_loss:
                 best_loss = epoch_loss
                 self.save("_best")
-            print(f"Epoch: {e+1}, iter: {self.iteration}, loss: {epoch_loss}")
+            print(f"epoch={e+1}, iter={self.iteration}, loss={epoch_loss:.5f}, elapsed={time_elapsed:.2f}")
             self.save("_last")
 
     def load(self, ext):
@@ -211,7 +221,7 @@ class EffectRegressorMLP:
         self.save_path = opts["save"]
 
     def predict1(self, sample):
-        obs = sample["observation"].to(self.device)
+        obs = sample["state"].to(self.device)
         action = sample["action"].to(self.device)
 
         h = self.encoder1(obs)
@@ -220,7 +230,7 @@ class EffectRegressorMLP:
         return h, effect_pred
 
     def predict2(self, sample):
-        obs = sample["observation"].to(self.device)
+        obs = sample["state"].to(self.device)
         with torch.no_grad():
             h1 = self.encoder1(obs.reshape(-1, 1, obs.shape[2], obs.shape[3]))
         h1 = h1.reshape(obs.shape[0], -1)
