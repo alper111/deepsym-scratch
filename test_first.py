@@ -1,12 +1,15 @@
 import argparse
 import os
+
 import torch
 import torchvision
 import yaml
 import matplotlib.pyplot as plt
+
 import data
 import utils
-from models import EffectRegressorMLP
+from models import DeepSymbolGenerator
+from blocks import MLP, build_encoder
 
 parser = argparse.ArgumentParser("test encoded model.")
 parser.add_argument("-ckpt", help="checkpoint folder path.", type=str)
@@ -16,8 +19,11 @@ file_loc = os.path.join(args.ckpt, "opts.yaml")
 opts = yaml.safe_load(open(file_loc, "r"))
 opts["device"] = "cpu"
 
-model = EffectRegressorMLP(opts)
-model.load(args.ckpt, "_best", 1)
+encoder = build_encoder(opts, 1).to(opts["device"])
+decoder = MLP([opts["code1_dim"]+3] + [opts["hidden_dim"]]*opts["depth"] + [3]).to(opts["device"])
+model = DeepSymbolGenerator(encoder, decoder, [], opts["device"], opts["learning_rate1"], os.path.join(opts["save"], "1"))
+model.load("_best")
+model.eval_mode()
 
 transform = data.default_transform(size=opts["size"], affine=False, mean=0.279, std=0.0094)
 trainset = data.SingleObjectData(transform=transform)
@@ -26,12 +32,12 @@ sample = iter(loader).next()
 objects = sample["observation"].reshape(5, 10, 3, 4, 4, opts["size"], opts["size"])
 objects = objects[:, :, 0].reshape(-1, 1, 42, 42)
 colored = [[], [], [], []]
-model.encoder1.eval()
+
 with torch.no_grad():
     done = False
     it = 0
     while not done:
-        c = model.encoder1(objects[it].reshape(1, 1, 42, 42))
+        c = model.encode(objects[it].reshape(1, 1, 42, 42)).round()
         cat = int(utils.binary_to_decimal(c[0]))
         if len(colored[cat]) < 20:
             colored[cat].append(objects[it].clone())

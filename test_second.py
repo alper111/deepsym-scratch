@@ -1,11 +1,14 @@
 import argparse
 import os
+
 import torch
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+
 import data
-from models import EffectRegressorMLP
+from models import DeepSymbolGenerator
+from blocks import MLP, build_encoder
 
 parser = argparse.ArgumentParser("test encoded model.")
 parser.add_argument("-ckpt", help="checkpoint folder path.", type=str)
@@ -15,11 +18,12 @@ file_loc = os.path.join(args.ckpt, "opts.yaml")
 opts = yaml.safe_load(open(file_loc, "r"))
 opts["device"] = "cpu"
 
-model = EffectRegressorMLP(opts)
-model.load(args.ckpt, "_best", 1)
-model.load(args.ckpt, "_best", 2)
-model.encoder1.eval()
-model.encoder2.eval()
+encoder = build_encoder(opts, 2).to(opts["device"])
+decoder = MLP([opts["code2_dim"]+opts["code1_dim"]*2+1] + [opts["hidden_dim"]]*opts["depth"] + [6]).to(opts["device"])
+# we can omit the submodule since we ll only use the encoder
+model = DeepSymbolGenerator(encoder, decoder, [], opts["device"], 0.001, os.path.join(opts["save"], "2"))
+model.load("_best")
+model.eval_mode()
 
 transform = data.default_transform(size=opts["size"], affine=False, mean=0.279, std=0.0094)
 trainset = data.PairedObjectData(transform=transform)
@@ -27,7 +31,7 @@ trainset.train = False
 loader = torch.utils.data.DataLoader(trainset, batch_size=36, shuffle=True)
 objects = iter(loader).next()["observation"]
 with torch.no_grad():
-    codes = model.encoder2(objects)
+    codes = model.encode(objects).round()
 
 fig, ax = plt.subplots(6, 6, figsize=(10, 6))
 for i in range(6):
