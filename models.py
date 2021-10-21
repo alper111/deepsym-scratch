@@ -143,8 +143,6 @@ class DeepSymbolGenerator:
         decoder_dict = torch.load(decoder_path)
         self.encoder.load_state_dict(encoder_dict)
         self.decoder.load_state_dict(decoder_dict)
-        for network in self.subnetworks:
-            network.load(ext)
 
     def save(self, ext):
         encoder_dict = self.encoder.eval().cpu().state_dict()

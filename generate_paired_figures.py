@@ -1,12 +1,15 @@
 import argparse
 import os
+
 import torch
 import torchvision
 import yaml
-import data
-from models import EffectRegressorMLP
 import matplotlib
 import matplotlib.cm as cm
+
+import data
+from models import DeepSymbolGenerator
+from blocks import MLP, build_encoder
 
 parser = argparse.ArgumentParser("test encoded model.")
 parser.add_argument("-ckpt", help="checkpoint folder path.", type=str)
@@ -16,10 +19,12 @@ file_loc = os.path.join(args.ckpt, "opts.yaml")
 opts = yaml.safe_load(open(file_loc, "r"))
 opts["device"] = "cpu"
 
-model = EffectRegressorMLP(opts)
-model.load(args.ckpt, "_best", 1)
-model.load(args.ckpt, "_best", 2)
-model.encoder2.eval()
+encoder = build_encoder(opts, 2).to(opts["device"])
+decoder = MLP([opts["code2_dim"]+opts["code1_dim"]*2+1] + [opts["hidden_dim"]]*opts["depth"] + [6]).to(opts["device"])
+# we can omit the submodule since we ll only use the encoder
+model = DeepSymbolGenerator(encoder, decoder, [], opts["device"], 0.001, os.path.join(opts["save"], "2"))
+model.load("_best")
+model.eval_mode()
 
 transform = data.default_transform(size=opts["size"], affine=False, mean=0.279, std=0.0094)
 trainset = data.SingleObjectData(transform=transform)
@@ -29,7 +34,7 @@ objects = objects.reshape(5, 10, 3, 4, 4, opts["size"], opts["size"])
 
 dist = torch.zeros(25, 3, 10, 10)
 
-minima = -1
+minima = 0
 maxima = 1
 norm = matplotlib.colors.Normalize(vmin=minima, vmax=maxima, clip=True)
 mapper = cm.ScalarMappable(norm=norm, cmap=cm.get_cmap("bwr"))
@@ -41,7 +46,7 @@ for i in range(5):
 
         xy = torch.cat([x, y], dim=1)
         with torch.no_grad():
-            codes = model.encoder2(xy)
+            codes = model.encode(xy)
         dist[i*5+j, 0] = codes.reshape(10, 10).flip([0])
         for r in range(10):
             for c in range(10):
