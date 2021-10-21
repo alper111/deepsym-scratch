@@ -134,6 +134,7 @@ out/*
 
 # data files
 data/*
+simtools/data/*
 
 # save files
 save/*
