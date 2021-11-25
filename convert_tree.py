@@ -21,8 +21,8 @@ PROBABILISTIC = True if args.p == 1 else False
 
 tree = pickle.load(open(os.path.join(opts["save"], "tree.pkl"), "rb"))
 
-# effect_names = np.load(os.path.join(opts["save"], "effect_names.npy"))
-effect_names = ["effect%d" % i for i in range(len(tree.tree_.value))]
+effect_names = np.load(os.path.join(opts["save"], "effect_names.npy"))
+# effect_names = ["effect%d" % i for i in range(len(tree.tree_.value))]
 K = len(effect_names)
 
 CODE_DIM = 2
@@ -48,8 +48,12 @@ pretext += ")"
 pretext += "\n\t(:predicates"
 
 for i in range(K):
-    pretext += "\n\t\t(%s) " % effect_names[i]
-pretext += "(base) \n\t\t(pickloc ?x)\n\t\t(instack ?x)\n\t\t(stackloc ?x)\n\t\t(relation0 ?x ?y)\n\t\t(relation1 ?x ?y)"
+    if effect_names[i][0] == "e":
+        pretext += "\n\t\t(%s)" % effect_names[i]
+pretext += "\n\t\t(stacked)"
+pretext += "\n\t\t(inserted)"
+
+pretext += "\n\t\t(base) \n\t\t(pickloc ?x)\n\t\t(instack ?x)\n\t\t(stackloc ?x)\n\t\t(relation0 ?x ?y)\n\t\t(relation1 ?x ?y)"
 for i in range(2**CODE_DIM):
     pretext += "\n\t\t(" + obj_names[utils.decimal_to_binary(i, length=CODE_DIM)] + " ?x)"
 for i in range(7):
