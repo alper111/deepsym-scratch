@@ -12,7 +12,7 @@ ACTION = torch.load("data/tile_action.pt")
 
 BN = True
 NUM_ACTIONS = 4
-NUM_BITS = 21
+NUM_BITS = 13
 NUM_EPOCH = 300
 LR = 0.0001
 BATCH_SIZE = 128
