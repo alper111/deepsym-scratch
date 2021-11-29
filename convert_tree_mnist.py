@@ -42,9 +42,9 @@ for i in range(17):
 pretext += "\n\t)"
 print(pretext, file=open(file_loc, "a"))
 
-action_template = "\t(:action aux%d"
-for i, (precond, effect) in enumerate(pddl_code):
-    print(action_template % i, file=open(file_loc, "a"))
+action_template = "\t(:action %s%d"
+for i, (precond, effect, action_name) in enumerate(pddl_code):
+    print(action_template % (action_name, i), file=open(file_loc, "a"))
     print("\t\t"+precond, file=open(file_loc, "a"))
     print("\t\t"+effect, file=open(file_loc, "a"))
     print("\t)", file=open(file_loc, "a"))
