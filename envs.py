@@ -67,9 +67,9 @@ class TilePuzzleMNIST:
         for i in range(9):
             digit = perm[i].item()
             labels = MNIST_LABELS[digit]
-            # self.index[i] = labels[torch.randint(0, len(labels), ())]
+            self.index[i] = labels[torch.randint(0, len(labels), ())]
             # fix the digits for now as in Asai&Fukunaga 2017
-            self.index[i] = labels[0]
+            # self.index[i] = labels[0]
             if digit == 0:
                 self.location = [i // 3, i % 3]
         self.index = self.index.reshape(3, 3)
@@ -100,10 +100,8 @@ class TilePuzzleMNIST:
         index = torch.zeros(9, dtype=torch.int64)
         for i in range(9):
             digit = randperm[i].item()
-            labels = MNIST_LABELS[digit]
-            # self.index[i] = labels[torch.randint(0, len(labels), ())]
-            # fix the digits for now as in Asai&Fukunaga 2017
-            index[i] = labels[0]
+            idx, = torch.where(self.permutation.reshape(-1) == digit)
+            index[i] = self.index.reshape(-1)[idx]
         index = index.reshape(3, 3)
         canvas = torch.zeros(1, 3*28, 3*28)
         for i in range(3):
