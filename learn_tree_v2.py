@@ -10,7 +10,7 @@ import numpy as np
 import data
 from models import DeepSymbolGenerator
 from blocks import build_encoder, MLP, ChannelWrapper
-from utils import decimal_to_binary, binary_to_decimal
+from utils import decimal_to_binary, binary_to_decimal_tensor
 
 parser = argparse.ArgumentParser("learn pddl rules from decision tree.")
 parser.add_argument("-opts", help="option file", type=str, required=True)
@@ -21,6 +21,7 @@ opts["device"] = "cpu"
 
 transform = data.default_transform(size=opts["size"], affine=False, mean=0.279, std=0.0094)
 trainset = data.PairedObjectData(transform=transform)
+trainset.train = False
 loader = torch.utils.data.DataLoader(trainset, batch_size=2500, shuffle=True)
 mu = trainset.eff_mu.numpy()
 std = trainset.eff_std.numpy()
@@ -40,41 +41,63 @@ model.eval_mode()
 model.print_model()
 
 X, Y = [], []
-for i in range(10):
-    sample = iter(loader).next()
-    with torch.no_grad():
+sample = iter(loader).next()
+with torch.no_grad():
+    codes = model.concat(sample).round()
+    for i in range(20):
+        X.append(codes.clone())
+    for i in range(20):
         codes = model.concat(sample).round()
-        effects = []
-        for c in codes:
-            number = binary_to_decimal(c[:5])
-            effects.append(number)
-
-    X.append(codes)
-    Y.append(torch.tensor(effects))
+        effects = binary_to_decimal_tensor(codes[:, :5])
+        Y.append(effects)
 
 X = torch.cat(X, dim=0)
 Y = torch.cat(Y, dim=0)
 torch.save(X, "tempX.pt")
 torch.save(Y, "tempY.pt")
 
-tree = DecisionTreeClassifier(min_samples_leaf=500)
+tree = DecisionTreeClassifier(min_samples_leaf=100)
 tree.fit(X, Y)
 preds = tree.predict(X)
 
 print(tree.get_depth())
 print(tree.get_n_leaves())
 print(tree.get_params())
-# print(((torch.tensor(preds) - Y)**2).mean().float())
 for v in tree.tree_.value:
     print(v)
 
 accuracy = (torch.tensor(preds) == Y).sum().float() / len(Y)*100
 print("%.1f" % accuracy)
-# print("decoded values")
-# for i, v in enumerate(Y):
-#     print("Effect %d: %.2f %.2f %.2f %.2f %.2f %.2f" % ((i,) + tuple(v)))
 
 path = os.path.join(opts["save"], "tree.pkl")
 file = open(path, "wb")
 pickle.dump(tree, file)
 file.close()
+
+unique_effect_categories = torch.unique(Y)
+effect_names = []
+for i, effect_cat in enumerate(unique_effect_categories):
+    code = torch.tensor(decimal_to_binary(effect_cat, length=5))
+    action = torch.tensor([1.0])
+    z = torch.cat([code, action])
+    with torch.no_grad():
+        effect = model.decode(z)
+    # print("%.3f %.3f %.3f %.3f %.3f %.3f" % tuple(effect), "===", "%.3f %.3f %.3f %.3f %.3f %.3f" % tuple(effect*std+mu), end="")
+    if effect[0] < -0.3 and effect[1] < -0.1 and effect[2] > -0.11:
+        effect_names.append("stack%d" % i)
+        # print()
+        # print(z)
+        # print(" -> stacked")
+    elif effect[0] < -0.3 and effect[1] < -0.1 and effect[2] < -0.11:
+        effect_names.append("insert%d" % i)
+        # print()
+        # print(z)
+        # print(" -> inserted")
+    else:
+        effect_names.append("effect%d" % i)
+        # print()
+        # print(z)
+        # print(" -> unrelated")
+
+path = os.path.join(opts["save"], "effect_names.npy")
+np.save(path, effect_names)
