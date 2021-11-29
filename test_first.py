@@ -29,7 +29,7 @@ transform = data.default_transform(size=opts["size"], affine=False, mean=0.279, 
 trainset = data.SingleObjectData(transform=transform)
 loader = torch.utils.data.DataLoader(trainset, batch_size=2400, shuffle=True)
 sample = iter(loader).next()
-objects = sample["observation"].reshape(5, 10, 3, 4, 4, opts["size"], opts["size"])
+objects = sample["state"].reshape(5, 10, 3, 4, 4, opts["size"], opts["size"])
 objects = objects[:, :, 0].reshape(-1, 1, 42, 42)
 colored = [[], [], [], []]
 
