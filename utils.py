@@ -95,30 +95,32 @@ def tree_to_code(tree, effect_names, obj_names, probabilistic):
                 effect += "(probabilistic"
                 # this shenanigan is needed because probabilities add up to more than one.
                 probs = (counts / counts.sum())
-                probs = (probs * 1000).round().astype(np.int)
+                probs = (probs * 100000).round().astype(np.int)
                 ptotal = probs.sum()
-                if ptotal > 1000:
-                    residual = ptotal - 1000
+                if ptotal > 100000:
+                    residual = ptotal - 100000
                     probs[np.argmax(probs)] -= residual
 
                 for i in range(len(counts)):
-                    if probs[i] != 1000:
-                        effect += "\n\t\t\t\t 0.%03d " % (probs[i])
+                    if probs[i] == 0:
+                        continue
+                    elif probs[i] != 100000:
+                        effect += "\n\t\t\t\t 0.%05d " % (probs[i])
                     else:
-                        effect += "\n\t\t\t\t 1.000 "
+                        effect += "\n\t\t\t\t 1.00000 "
 
-                    if effect_names[i] == "stacked":
+                    if effect_names[i][0] == "s":
                         effect += "(and (stacked) (inserted) (instack ?above) (stackloc ?above) (not (stackloc ?below)))"
-                    elif effect_names[i] == "inserted":
+                    elif effect_names[i][0] == "i":
                         effect += "(and (inserted) (instack ?above) (stackloc ?above) (not (stackloc ?below)))"
                     else:
                         effect += "(%s)" % (effect_names[i])
                 effect += ")"
             else:
                 idx = counts.argmax()
-                if effect_names[idx] == "stacked":
+                if effect_names[idx][0] == "s":
                     effect += "\n\t\t\t\t (and (stacked) (inserted) (instack ?above) (stackloc ?above) (not (stackloc ?below)))"
-                elif effect_names[idx] == "inserted":
+                elif effect_names[idx][0] == "i":
                     effect += "(and (inserted) (instack ?above) (stackloc ?above) (not (stackloc ?below)))"
                 else:
                     effect += "\n\t\t\t\t (%s)" % (effect_names[idx])
@@ -138,25 +140,30 @@ def rule_to_code(rule, obj_names):
 
     possible_obj_1 = list(obj_names.keys())
     possible_obj_2 = list(obj_names.keys())
-    for i, idx in enumerate(indices[:2]):
+    for i, idx in enumerate(indices[1:3]):
         if idx == -1:
             continue
-        sign = np.sign(rule[idx])
+        # sign = np.sign(rule[idx])
+        sign = 0 if np.sign(rule[idx]) == -1 else 1
+        # burada artik obje kategorileri 0,1 uzerinden
+        # fix this
         possible_obj_1 = list(filter(lambda x: x[i] == sign, possible_obj_1))
 
-    for i, idx in enumerate(indices[2:4]):
+    for i, idx in enumerate(indices[3:]):
         if idx == -1:
             continue
-        sign = np.sign(rule[idx])
+        # sign = np.sign(rule[idx])
+        sign = 0 if np.sign(rule[idx]) == -1 else 1
         possible_obj_2 = list(filter(lambda x: x[i] == sign, possible_obj_2))
 
     obj1_list = [obj_names[x] for x in possible_obj_1]
     obj2_list = [obj_names[x] for x in possible_obj_2]
 
-    if indices[4] == -1:
-        comparison = "(or (relation0 ?below ?above) (relation1 ?below ?above))"
+    if indices[0] == -1:
+        # comparison = "(or (relation0 ?below ?above) (relation1 ?below ?above))"
+        comparison = ""
     else:
-        sign = np.sign(rule[indices[4]])
+        sign = np.sign(rule[indices[0]])
         if sign == -1:
             comparison = "(relation0 ?below ?above)"
         elif sign == 1:
@@ -166,6 +173,109 @@ def rule_to_code(rule, obj_names):
             exit()
 
     return obj1_list, obj2_list, comparison
+
+
+def tree_to_code_v2(tree, action_features, probabilistic):
+    tree_ = tree.tree_
+
+    def recurse(node, branch):
+        if tree_.feature[node] != _tree.TREE_UNDEFINED:
+            left = branch.copy()
+            right = branch.copy()
+            left.append(-(tree_.feature[node]+1))
+            right.append(tree_.feature[node]+1)
+            rules_from_left = recurse(tree_.children_left[node], left)
+            rules_from_right = recurse(tree_.children_right[node], right)
+            rules = np.concatenate([rules_from_left, rules_from_right])
+            return rules
+        else:
+            precond = ":precondition (and "
+            action_rules = []
+            for f_i in branch:
+                if (abs(f_i)-1) in action_features:
+                    action_rules.append(f_i)
+                    continue
+
+                if f_i < 0:
+                    z_i = "(not (z%d)) " % (abs(f_i)-1)
+                else:
+                    z_i = "(z%d) " % (abs(f_i)-1)
+                precond += z_i
+
+            precond = precond[:-1] + ")"
+
+            counts = tree_.value[node][0]
+            effect = ":effect "
+            if probabilistic:
+                effect += "(probabilistic"
+                # this shenanigan is needed because probabilities add up to more than one.
+                probs = (counts / counts.sum())
+                probs = (probs * 100000).round().astype(np.int)
+                ptotal = probs.sum()
+                if ptotal > 100000:
+                    residual = ptotal - 100000
+                    probs[np.argmax(probs)] -= residual
+
+                for i in range(len(counts)):
+                    if probs[i] == 0:
+                        continue
+                    if probs[i] != 100000:
+                        effect += "\n\t\t\t\t 0.%05d " % (probs[i])
+                    else:
+                        effect += "\n\t\t\t\t 1.00000 "
+
+                    e_i = decimal_to_binary(tree.classes_[i], length=13)
+                    effect += "(and "
+                    for idx, e_ij in enumerate(e_i):
+                        if e_ij == 0:
+                            effect += "(not (z%d)) " % idx
+                        else:
+                            effect += "(z%d) " % idx
+                    # do not include action features
+                    # for a_i in action_features:
+                    #     effect += "(not (z%d)) " % a_i
+                    effect = effect[:-1] + ")"
+                effect += ")"
+            else:
+                idx = counts.argmax()
+                e_i = decimal_to_binary(tree.classes_[idx], length=13)
+                effect += "(and "
+                for idx, e_ij in enumerate(e_i):
+                    if e_ij == 0:
+                        effect += "(not (z%d)) " % idx
+                    else:
+                        effect += "(z%d) " % idx
+                for a_i in action_features:
+                    effect += "(not (z%d)) " % a_i
+                effect = effect[:-1] + ")"
+
+            # todo: make this generic with an action dict
+            action_names = {
+                14: "move_right",
+                15: "move_up",
+                16: "move_left",
+                17: "move_down"
+            }
+            action_rules = np.array(action_rules)
+            mask = action_rules > 0
+            if mask.any():
+                key = action_rules[mask][0]
+                action_name = action_names[key]
+            else:
+                action_name = ""
+                for i in range(14, 18):
+                    if i not in abs(action_rules):
+                        if len(action_name) == 0:
+                            action_name = action_names[i]
+                        else:
+                            action_name = action_name + "_or_" + action_names[i]
+            print(branch)
+            print(action_rules, action_name)
+            print(precond)
+            # print(effect)
+
+            return np.array([(precond, effect, action_name)])
+    return recurse(0, [])
 
 
 def get_parameter_count(model):
@@ -189,6 +299,11 @@ def decimal_to_binary(number, length=None):
     return tuple(reversed(arr))
 
 
+def decimal_to_binary_v2(number_list, length=None):
+    binaries = [format(x, "0"+str(length)+"b") for x in number_list]
+    return binaries
+
+
 def binary_to_decimal(number):
     dec_number = 0
     for i, digit in enumerate(reversed(number)):
@@ -196,6 +311,15 @@ def binary_to_decimal(number):
         if int(digit) == 1:
             dec_number += multiplier
     return dec_number
+
+
+def binary_to_decimal_tensor(x):
+    N, D = x.shape
+    dec_tensor = torch.zeros(x.shape[0], dtype=torch.int32)
+    for i in reversed(range(D)):
+        multiplier = 2**i
+        dec_tensor += multiplier * x[:, D-i-1].int()
+    return dec_tensor
 
 
 def in_array(element, array):
