@@ -36,9 +36,9 @@ concat_to_first() {
 loc="$(grep save: $1 | sed 's/^.*: //')"
 
 # # generate a scene
-# python generate_scene.py
+python simtools/generate_scene_v2.py -s 3
 # # transform image to pddl problem
-# python recognize.py -opts "$1" -goal "$2"
+python recognize.py -opts "$1" -goal "$2"
 
 run_pddl "$loc" "ddomain.pddl" "pddl-plan.txt"
 run_pddl "$loc" "pdomain.pddl" "ppddl-plan.txt"
