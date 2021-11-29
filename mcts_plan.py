@@ -22,8 +22,8 @@ objs = ["O{}".format(i+1) for i in range(len(codes1))]
 # load the forward model
 tree = pickle.load(open(os.path.join(opts["save"], "tree.pkl"), "rb"))
 effects = list(np.load(os.path.join(opts["save"], "effect_names.npy")))
-stack_idx = effects.index("stacked")
-insert_idx = effects.index("inserted")
+stack_idx = list(filter(lambda i: effects[i][0] == "s", range(len(effects))))
+insert_idx = list(filter(lambda i: effects[i][0] == "i", range(len(effects))))
 # parse goal
 goal = args.goal.split(" ")
 height = int(goal[0].strip("H()"))

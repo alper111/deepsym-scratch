@@ -252,15 +252,16 @@ class ForwardDynamics:
         elif act == "put":
             idx1 = int(obj[-1]) - 1
             idx2 = int(state.stack[-1][-1]) - 1
-            x = torch.cat([self.codes1[idx2], self.codes1[idx1], self.codes2[idx2, idx1].unsqueeze(0)], dim=-1).numpy()
+            # x = torch.cat([self.codes1[idx2], self.codes1[idx1], self.codes2[idx2, idx1].unsqueeze(0)], dim=-1).numpy()
+            x = torch.cat([self.codes2[idx2, idx1].unsqueeze(0), self.codes1[idx2], self.codes1[idx1], torch.tensor([1.0])], dim=-1).numpy()
             eff_prob = self.tree.predict_proba([x])[0]
             effect = np.random.multinomial(1, eff_prob)
             effect = np.argmax(effect)
             new_state.picks.remove(obj)
             # stack effect
-            if effect == self.stack_idx:
+            if effect in self.stack_idx:
                 new_state.stack.append(obj)
-            elif effect == self.insert_idx:
+            elif effect in self.insert_idx:
                 new_state.stack.append(obj)
                 new_state.inserts.append(obj)
             else:
