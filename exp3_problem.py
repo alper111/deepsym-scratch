@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from models import DeepSymbolGenerator
 from envs import TilePuzzleMNIST
 import blocks
+from mgpt_planner import mGPT
 
 parser = argparse.ArgumentParser("convert to problem.")
 parser.add_argument("-s", help="save location", type=str, required=True)
@@ -53,11 +54,7 @@ for p in model.decoder.parameters():
 
 env = TilePuzzleMNIST()
 x_init = env.state().unsqueeze(0)
-x_goal = env.goal_state().unsqueeze(0)
-fig, ax = plt.subplots(1, 2)
-ax[0].imshow(x_init[0].permute(1, 2, 0))
-ax[1].imshow(x_goal[0].permute(1, 2, 0))
-plt.show()
+x_goal = env.random_goal_state().unsqueeze(0)
 z_init = model.encode(x_init).round().int()[0]
 z_goal = model.encode(x_goal).round().int()[0]
 print(z_init)
@@ -68,7 +65,6 @@ print("\t(:init ", file=open(save_name, "a"), end="")
 
 for i, z_i in enumerate(z_init):
     if z_i == 0:
-        # print(" (not (z%d))" % i, file=open(save_name, "a"), end="")
         continue
     else:
         print(" (z%d)" % i, file=open(save_name, "a"), end="")
@@ -80,3 +76,15 @@ for i, z_i in enumerate(z_goal):
     else:
         print(" (z%d)" % i, file=open(save_name, "a"), end="")
 print("))\n)", file=open(save_name, "a"))
+
+
+planner = mGPT(rounds=500)
+valid, output = planner.find_plan("save/tile_puzzle/pdomain_mnist.pddl", "save/tile_puzzle/problem_mnist.pddl")
+print(output.path)
+
+fig, ax = plt.subplots(1, 2)
+ax[0].set_title("Initial")
+ax[0].imshow(x_init[0].permute(1, 2, 0), cmap="gray")
+ax[1].set_title("Goal")
+ax[1].imshow(x_goal[0].permute(1, 2, 0), cmap="gray")
+plt.show()
