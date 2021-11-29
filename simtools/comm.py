@@ -102,6 +102,7 @@ class Communication:
 
     def remove_object(self, obj_id):
         sim.simxRemoveObject(self.client_id, obj_id, sim.simx_opmode_blocking)
+        self.generated_objects.remove(obj_id)
 
     def get_tip_pose(self):
         code, position = sim.simxGetObjectPosition(self.client_id, self.tip_handle, -1, sim.simx_opmode_blocking)
@@ -145,7 +146,9 @@ class Communication:
 
     def get_depth(self):
         code, res, image = sim.simxGetVisionSensorDepthBuffer(self.client_id, self.depth_cam, sim.simx_opmode_blocking)
-        image = np.array(image).reshape(res[1], res[0])[::-1]
+        image = np.array(image).reshape(res[1], res[0])[::-1].copy()
+        # you should change this in the next experimentation!
+        image = image[8:120, 8:120]
         return image
 
     def get_force_sensor(self):
@@ -155,6 +158,9 @@ class Communication:
     def step(self):
         sim.simxSynchronousTrigger(self.client_id)
         sim.simxGetPingTime(self.client_id)
+
+    def init_arm_pose(self, wait=20):
+        self.set_tip_pose([-0.2, -0.1139, 1.1858], wait=wait)
 
     def hand_grasp_pose(self, wait=20):
         position = np.array([
