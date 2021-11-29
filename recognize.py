@@ -1,8 +1,11 @@
 import os
 import argparse
+
 import yaml
 import torch
-from models import EffectRegressorMLP
+
+from models import DeepSymbolGenerator
+from blocks import build_encoder, MLP, ChannelWrapper
 import data
 import utils
 
@@ -15,11 +18,20 @@ args = parser.parse_args()
 opts = yaml.safe_load(open(args.opts, "r"))
 device = torch.device(opts["device"])
 
-model = EffectRegressorMLP(opts)
-model.load(opts["save"], "_best", 1)
-model.load(opts["save"], "_best", 2)
-model.encoder1.eval()
-model.encoder2.eval()
+encoder1 = build_encoder(opts, 1).to(device)
+decoder1 = MLP([opts["code1_dim"]+3] + [opts["hidden_dim"]]*opts["depth"] + [3]).to(device)
+submodel = DeepSymbolGenerator(encoder1, decoder1, [], device, 0.0, os.path.join(opts["save"], "1"))
+submodel.load("_best")
+submodel.encoder = ChannelWrapper(submodel.encoder)
+submodel.eval_mode()
+
+encoder2 = build_encoder(opts, 2).to(device)
+decoder2 = MLP([opts["code2_dim"]+opts["code1_dim"]*2+1] + [opts["hidden_dim"]]*opts["depth"] + [6]).to(device)
+model = DeepSymbolGenerator(encoder2, decoder2, [submodel], device, 0.0, os.path.join(opts["save"], "2"))
+model.load("_best")
+model.eval_mode()
+model.print_model()
+
 # Homogeneous transformation matrix
 H = torch.load("H.pt")
 # object locations and sizes
@@ -30,6 +42,7 @@ x = torch.load("depthimg.pth")
 # estimated objects and locations
 objs, locs, _ = utils.find_objects(x, opts["size"])
 n_obj = len(objs)
+print(locs)
 
 transform = data.default_transform(size=opts["size"], affine=False, mean=0.279, std=0.0094)
 for i, o in enumerate(objs):
@@ -50,7 +63,9 @@ codes2 = torch.zeros(n_obj, n_obj)
 # recognize objects
 with torch.no_grad():
     for i, obj in enumerate(objs):
-        cat = model.encoder1(obj.unsqueeze(0).unsqueeze(0))
+        x = obj.unsqueeze(0).unsqueeze(0)
+        cat = model.subnetworks[0].encode(x).round().int()
+        # cat = model.encoder1(obj.unsqueeze(0).unsqueeze(0))
         if "discrete" in opts and not opts["discrete"]:
             c1 = torch.load(os.path.join(opts["save"], "centroids_1.pth")).to(opts["device"])
             _, idx = torch.cdist(cat, c1).topk(k=2, largest=False)
@@ -65,14 +80,15 @@ with torch.no_grad():
 
         obj_infos.append(info)
         for j in range(n_obj):
-            rel = model.encoder2(torch.stack([obj, objs[j]]).unsqueeze(0))
+            # rel = model.encode(torch.stack([obj, objs[j]]).unsqueeze(0))
+            rel = model.encoder(torch.stack([obj, objs[j]]).unsqueeze(0)).round().int()
             if "discrete" in opts and not opts["discrete"]:
                 c2 = torch.load(os.path.join(opts["save"], "centroids_2.pth")).to(opts["device"])
                 _, idx = torch.cdist(rel, c2).topk(k=2, largest=False)
                 rel = utils.decimal_to_binary(idx[0, 0], length=opts["code2_dim"])[0]
             codes2[i, j] = rel
             if i != j:
-                if rel == -1:
+                if rel == 0:
                     comparisons.append("(relation0 O%d O%d)" % (i+1, j+1))
                 else:
                     comparisons.append("(relation1 O%d O%d)" % (i+1, j+1))
