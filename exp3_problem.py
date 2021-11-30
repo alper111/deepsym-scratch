@@ -42,7 +42,7 @@ decoder = torch.nn.Sequential(
     torch.nn.ConvTranspose2d(in_channels=32, out_channels=1, kernel_size=4, stride=2, padding=1)
 )
 model = DeepSymbolGenerator(encoder=encoder, decoder=decoder, subnetworks=[],
-                            device="cpu", lr=1e-4, path="save/tile_puzzle", coeff=9.0)
+                            device="cpu", lr=1e-4, path=args.s, coeff=9.0)
 
 
 model.load("_best")
@@ -78,9 +78,14 @@ for i, z_i in enumerate(z_goal):
 print("))\n)", file=open(save_name, "a"))
 
 
-planner = mGPT(rounds=500)
-valid, output = planner.find_plan("save/tile_puzzle/pdomain_mnist.pddl", "save/tile_puzzle/problem_mnist.pddl")
-print(output.path)
+planner = mGPT(rounds=100, max_time=600)
+domain_file = os.path.join(args.s, "pdomain_mnist.pddl")
+problem_file = os.path.join(args.s, "problem_mnist.pddl")
+valid, output = planner.find_plan(domain_file, problem_file)
+if valid:
+    print(output.path)
+else:
+    print(output)
 
 fig, ax = plt.subplots(1, 2)
 ax[0].set_title("Initial")

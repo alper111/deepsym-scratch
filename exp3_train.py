@@ -1,10 +1,19 @@
 """Train DeepSym on MNIST 8-tile puzzle."""
+import argparse
+import os
+
 import torch
 
 from models import DeepSymbolGenerator
 from data import TilePuzzleData
 import blocks
 
+parser = argparse.ArgumentParser("Train DeepSym on Tile MNIST Env.")
+parser.add_argument("-s", help="save folder", type=str, required=True)
+args = parser.parse_args()
+
+if not os.path.exists(args.s):
+    os.makedirs(args.s)
 
 STATE = torch.load("data/tile_state.pt") / 255.0
 EFFECT = torch.load("data/tile_effect.pt") / 255.0
@@ -42,7 +51,7 @@ encoder.to("cuda")
 decoder.to("cuda")
 
 model = DeepSymbolGenerator(encoder=encoder, decoder=decoder, subnetworks=[],
-                            device="cuda", lr=1e-4, path="save/tile_puzzle", coeff=9.0)
+                            device="cuda", lr=1e-4, path=args.s, coeff=9.0)
 model.print_model()
 
 data = TilePuzzleData("./data")

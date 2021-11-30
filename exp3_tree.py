@@ -1,4 +1,6 @@
 import pickle
+import argparse
+import os
 
 import torch
 from sklearn.tree import DecisionTreeClassifier
@@ -7,6 +9,10 @@ from models import DeepSymbolGenerator
 from data import TilePuzzleData
 import blocks
 import utils
+
+parser = argparse.ArgumentParser("Train decision tree with the decoder input output.")
+parser.add_argument("-s", help="model folder", type=str, required=True)
+args = parser.parse_args()
 
 STATE = torch.load("data/tile_state.pt") / 255.0
 EFFECT = torch.load("data/tile_effect.pt") / 255.0
@@ -40,7 +46,7 @@ encoder.to("cuda")
 decoder.to("cuda")
 
 model = DeepSymbolGenerator(encoder=encoder, decoder=decoder, subnetworks=[],
-                            device="cuda", lr=1e-4, path="save/tile_puzzle", coeff=9.0)
+                            device="cuda", lr=1e-4, path=args.s, coeff=9.0)
 
 model.load("_best")
 model.eval_mode()
@@ -73,15 +79,15 @@ print("X shape:", train_X.shape)
 print("Y shape:", train_Y.shape)
 train_Y = utils.binary_to_decimal_tensor(train_Y)
 
-tree = DecisionTreeClassifier()
+tree = DecisionTreeClassifier(min_samples_leaf=100)
 tree.fit(train_X, train_Y)
 
-# preds = []
-# for i in range(100):
-#     preds.append(torch.tensor(tree.predict(train_X[i*1000:(i+1)*1000])))
-# preds = torch.cat(preds, dim=0)
+preds = []
+for i in range(100):
+    preds.append(torch.tensor(tree.predict(train_X[i*1000:(i+1)*1000])))
+preds = torch.cat(preds, dim=0)
 
-preds = tree.predict(train_X)
+# preds = tree.predict(train_X)
 
 print(tree.get_depth())
 print(tree.get_n_leaves())
@@ -89,6 +95,6 @@ print(tree.get_n_leaves())
 accuracy = (torch.tensor(preds) == train_Y).sum().float() / len(train_Y) * 100
 print("%.1f" % accuracy)
 
-file = open("temp_tree.pkl", "wb")
+file = open(os.path.join(args.s, "tree.pkl"), "wb")
 pickle.dump(tree, file)
 file.close()

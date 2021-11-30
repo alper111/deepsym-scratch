@@ -175,7 +175,7 @@ def rule_to_code(rule, obj_names):
     return obj1_list, obj2_list, comparison
 
 
-def tree_to_code_v2(tree, action_features, probabilistic):
+def tree_to_code_v2(tree, actions, probabilistic, num_bits):
     tree_ = tree.tree_
 
     def recurse(node, branch):
@@ -192,7 +192,7 @@ def tree_to_code_v2(tree, action_features, probabilistic):
             precond = ":precondition (and "
             action_rules = []
             for f_i in branch:
-                if (abs(f_i)-1) in action_features:
+                if abs(f_i) in actions.keys():
                     action_rules.append(f_i)
                     continue
 
@@ -224,7 +224,7 @@ def tree_to_code_v2(tree, action_features, probabilistic):
                     else:
                         effect += "\n\t\t\t\t 1.00000 "
 
-                    e_i = decimal_to_binary(tree.classes_[i], length=13)
+                    e_i = decimal_to_binary(tree.classes_[i], length=num_bits)
                     effect += "(and "
                     for idx, e_ij in enumerate(e_i):
                         if e_ij == 0:
@@ -238,41 +238,34 @@ def tree_to_code_v2(tree, action_features, probabilistic):
                 effect += ")"
             else:
                 idx = counts.argmax()
-                e_i = decimal_to_binary(tree.classes_[idx], length=13)
+                e_i = decimal_to_binary(tree.classes_[idx], length=num_bits)
                 effect += "(and "
                 for idx, e_ij in enumerate(e_i):
                     if e_ij == 0:
                         effect += "(not (z%d)) " % idx
                     else:
                         effect += "(z%d) " % idx
-                for a_i in action_features:
-                    effect += "(not (z%d)) " % a_i
+                # do not include action features
+                # for a_i in action_features:
+                #     effect += "(not (z%d)) " % a_i
                 effect = effect[:-1] + ")"
 
-            # todo: make this generic with an action dict
-            action_names = {
-                14: "move_right",
-                15: "move_up",
-                16: "move_left",
-                17: "move_down"
-            }
             action_rules = np.array(action_rules)
             mask = action_rules > 0
             if mask.any():
                 key = action_rules[mask][0]
-                action_name = action_names[key]
+                action_name = actions[key]
             else:
                 action_name = ""
-                for i in range(14, 18):
+                for i in range(num_bits+1, num_bits+5):
                     if i not in abs(action_rules):
                         if len(action_name) == 0:
-                            action_name = action_names[i]
+                            action_name = actions[i]
                         else:
-                            action_name = action_name + "_or_" + action_names[i]
+                            action_name = action_name + "_or_" + actions[i]
             print(branch)
             print(action_rules, action_name)
             print(precond)
-            # print(effect)
 
             return np.array([(precond, effect, action_name)])
     return recurse(0, [])
