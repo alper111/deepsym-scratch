@@ -2,6 +2,8 @@ import torch
 
 MNIST_DATA = torch.load("data/mnist_data.pt")
 MNIST_LABELS = torch.load("data/mnist_label.pt")
+EMNIST_DATA = torch.load("data/emnist_data.pt")
+EMNIST_LABELS = torch.load("data/emnist_label.pt")
 
 
 class TilePuzzleMNIST:
@@ -17,14 +19,14 @@ class TilePuzzleMNIST:
         self.location = None
         self.size = size
         self.num_tile = size ** 2
-        if dataset == "mnist":
-            self.data = torch.load("data/mnist_data.pt")
-            self.labels = torch.load("data/mnist_label.pt")
-            self.num_class = 10
-        elif dataset == "emnist":
-            self.data = torch.load("data/emnist_data.pt")
-            self.labels = torch.load("data/emnist_label.pt")
-            self.num_class = 47
+        # if dataset == "mnist":
+        #     self.data = torch.load("data/mnist_data.pt")
+        #     self.labels = torch.load("data/mnist_label.pt")
+        #     self.num_class = 10
+        # elif dataset == "emnist":
+        #     self.data = torch.load("data/emnist_data.pt")
+        #     self.labels = torch.load("data/emnist_label.pt")
+        #     self.num_class = 47
 
         self.reset(permutation=permutation)
 
