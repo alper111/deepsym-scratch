@@ -11,7 +11,7 @@ class DeepSymbolGenerator:
     """DeepSym model from https://arxiv.org/abs/2012.02532"""
 
     def __init__(self, encoder: torch.nn.Module, decoder: torch.nn.Module,
-                 subnetworks: list[torch.nn.Module], device: str, lr: float,
+                 subnetworks: list, device: str, lr: float,
                  path: str, coeff: float = 1.0):
         """
         Parameters
