@@ -5,7 +5,7 @@ MNIST_LABELS = torch.load("data/mnist_label.pt")
 
 
 class TilePuzzleMNIST:
-    def __init__(self, permutation=None):
+    def __init__(self, permutation=None, size=3, dataset="mnist"):
         self.action_names = [
             "move_right",
             "move_up",
@@ -15,13 +15,24 @@ class TilePuzzleMNIST:
         self.permutation = None
         self.index = None
         self.location = None
+        self.size = size
+        self.num_tile = size ** 2
+        if dataset == "mnist":
+            self.data = torch.load("data/mnist_data.pt")
+            self.labels = torch.load("data/mnist_label.pt")
+            self.num_class = 10
+        elif dataset == "emnist":
+            self.data = torch.load("data/emnist_data.pt")
+            self.labels = torch.load("data/emnist_label.pt")
+            self.num_class = 47
+
         self.reset(permutation=permutation)
 
     def step(self, action):
         row, col = self.location
         blank_idx = self.index[row, col].item()
         if action == 0:
-            if self.location[1] != 2:
+            if self.location[1] != self.size-1:
                 piece_idx = self.index[row, col+1].item()
                 self.index[row, col] = piece_idx
                 self.index[row, col+1] = blank_idx
@@ -48,7 +59,7 @@ class TilePuzzleMNIST:
                 self.permutation[row, col] = self.permutation[row, col-1]
                 self.permutation[row, col-1] = 0
         elif action == 3:
-            if self.location[0] != 2:
+            if self.location[0] != self.size-1:
                 piece_idx = self.index[row+1, col].item()
                 self.index[row, col] = piece_idx
                 self.index[row+1, col] = blank_idx
@@ -57,7 +68,7 @@ class TilePuzzleMNIST:
                 self.permutation[row, col] = self.permutation[row+1, col]
                 self.permutation[row+1, col] = 0
         return self.state()
-    
+
     def reset(self, permutation=None):
         if permutation is None:
             perm = torch.randperm(9)
@@ -67,9 +78,9 @@ class TilePuzzleMNIST:
         for i in range(9):
             digit = perm[i].item()
             labels = MNIST_LABELS[digit]
-            self.index[i] = labels[torch.randint(0, len(labels), ())]
+            # self.index[i] = labels[torch.randint(0, len(labels), ())]
             # fix the digits for now as in Asai&Fukunaga 2017
-            # self.index[i] = labels[0]
+            self.index[i] = labels[0]
             if digit == 0:
                 self.location = [i // 3, i % 3]
         self.index = self.index.reshape(3, 3)
