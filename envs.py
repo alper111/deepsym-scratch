@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 
 MNIST_DATA = torch.load("data/mnist_data.pt")
