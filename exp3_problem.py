@@ -19,7 +19,7 @@ if os.path.exists(save_name):
 
 BN = True
 NUM_ACTIONS = 4
-NUM_BITS = 13
+NUM_BITS = 14
 SIZE = 3
 
 encoder = torch.nn.Sequential(
@@ -52,13 +52,20 @@ for p in model.encoder.parameters():
 for p in model.decoder.parameters():
     p.requires_grad = False
 
-env = TilePuzzleMNIST()
+env = TilePuzzleMNIST(size=SIZE, permutation="replacement")
 x_init = env.state().unsqueeze(0)
+
+# generate goal encoding by randomly sampling goals
 x_goal = env.random_goal_state().unsqueeze(0)
+# r_idx = torch.randint(0, 9, ()).item()
+# x_goal = torch.stack([env.avg_goal_state(r_idx) for i in range(1000)])
+
 z_init = model.encode(x_init).round().int()[0]
 z_goal = model.encode(x_goal).round().int()[0]
+# z_goal = model.encode(x_goal).mean(dim=0)
+tau = 0.05
 print(z_init)
-print(z_goal)
+print(["%.3f" % i for i in z_goal])
 
 print("(define (problem tilepuzzle) (:domain mnist)", file=open(save_name, "a"))
 print("\t(:init ", file=open(save_name, "a"), end="")
@@ -71,14 +78,17 @@ for i, z_i in enumerate(z_init):
 print(")", file=open(save_name, "a"))
 print("\t(:goal (and", file=open(save_name, "a"), end="")
 for i, z_i in enumerate(z_goal):
-    if z_i == 0:
+    if (z_i > 1-tau) or (z_i < tau):
+        continue
+
+    if z_i < 0.5:
         print(" (not (z%d))" % i, file=open(save_name, "a"), end="")
     else:
         print(" (z%d)" % i, file=open(save_name, "a"), end="")
 print("))\n)", file=open(save_name, "a"))
 
 
-planner = mGPT(rounds=100, max_time=600)
+planner = mGPT(rounds=1000, max_time=600, heuristic="ff")
 domain_file = os.path.join(args.s, "pdomain_mnist.pddl")
 problem_file = os.path.join(args.s, "problem_mnist.pddl")
 valid, output = planner.find_plan(domain_file, problem_file)
@@ -91,5 +101,5 @@ fig, ax = plt.subplots(1, 2)
 ax[0].set_title("Initial")
 ax[0].imshow(x_init[0].permute(1, 2, 0), cmap="gray")
 ax[1].set_title("Goal")
-ax[1].imshow(x_goal[0].permute(1, 2, 0), cmap="gray")
+ax[1].imshow(x_goal.mean(dim=0).permute(1, 2, 0), cmap="gray")
 plt.show()
