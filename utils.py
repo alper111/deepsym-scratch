@@ -175,7 +175,7 @@ def rule_to_code(rule, obj_names):
     return obj1_list, obj2_list, comparison
 
 
-def tree_to_code_v2(tree, actions, probabilistic, num_bits):
+def tree_to_code_v2(tree, actions, probabilistic, num_bits, threshold=0):
     tree_ = tree.tree_
 
     def recurse(node, branch):
@@ -189,6 +189,9 @@ def tree_to_code_v2(tree, actions, probabilistic, num_bits):
             rules = np.concatenate([rules_from_left, rules_from_right])
             return rules
         else:
+            counts = tree_.value[node][0]
+            if counts.sum() < threshold:
+                return np.array([("", "", "")])
             precond = ":precondition (and "
             action_rules = []
             for f_i in branch:
@@ -204,7 +207,6 @@ def tree_to_code_v2(tree, actions, probabilistic, num_bits):
 
             precond = precond[:-1] + ")"
 
-            counts = tree_.value[node][0]
             effect = ":effect "
             if probabilistic:
                 effect += "(probabilistic"
