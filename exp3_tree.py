@@ -14,13 +14,9 @@ parser = argparse.ArgumentParser("Train decision tree with the decoder input out
 parser.add_argument("-s", help="model folder", type=str, required=True)
 args = parser.parse_args()
 
-STATE = torch.load("data/tile_state.pt") / 255.0
-EFFECT = torch.load("data/tile_effect.pt") / 255.0
-ACTION = torch.load("data/tile_action.pt")
-
 BN = True
 NUM_ACTIONS = 4
-NUM_BITS = 13
+NUM_BITS = 14
 BATCH_SIZE = 1000
 
 encoder = torch.nn.Sequential(
@@ -83,7 +79,7 @@ tree = DecisionTreeClassifier(min_samples_leaf=100)
 tree.fit(train_X, train_Y)
 
 preds = []
-for i in range(100):
+for i in range(500):
     preds.append(torch.tensor(tree.predict(train_X[i*1000:(i+1)*1000])))
 preds = torch.cat(preds, dim=0)
 
