@@ -1,9 +1,10 @@
+import numpy as np
 import torch
 
 MNIST_DATA = torch.load("data/mnist_data.pt")
 MNIST_LABELS = torch.load("data/mnist_label.pt")
-EMNIST_DATA = torch.load("data/emnist_data.pt")
-EMNIST_LABELS = torch.load("data/emnist_label.pt")
+# EMNIST_DATA = torch.load("data/emnist_data.pt")
+# EMNIST_LABELS = torch.load("data/emnist_label.pt")
 
 
 class TilePuzzleMNIST:
@@ -19,14 +20,10 @@ class TilePuzzleMNIST:
         self.location = None
         self.size = size
         self.num_tile = size ** 2
-        # if dataset == "mnist":
-        #     self.data = torch.load("data/mnist_data.pt")
-        #     self.labels = torch.load("data/mnist_label.pt")
-        #     self.num_class = 10
-        # elif dataset == "emnist":
-        #     self.data = torch.load("data/emnist_data.pt")
-        #     self.labels = torch.load("data/emnist_label.pt")
-        #     self.num_class = 47
+        if dataset == "mnist":
+            self.num_class = 10
+        elif dataset == "emnist":
+            self.num_class = 47
 
         self.reset(permutation=permutation)
 
@@ -73,52 +70,76 @@ class TilePuzzleMNIST:
 
     def reset(self, permutation=None):
         if permutation is None:
-            perm = torch.randperm(9)
+            # this only works in 3x3
+            perm = torch.randperm(self.num_tile)
+        elif permutation == "replacement":
+            perm = self._draw_with_replacement()
         else:
             perm = permutation
-        self.index = torch.zeros(9, dtype=torch.int64)
-        for i in range(9):
+        self.index = torch.zeros(self.num_tile, dtype=torch.int64)
+        for i in range(self.num_tile):
             digit = perm[i].item()
             labels = MNIST_LABELS[digit]
             # self.index[i] = labels[torch.randint(0, len(labels), ())]
             # fix the digits for now as in Asai&Fukunaga 2017
             self.index[i] = labels[0]
             if digit == 0:
-                self.location = [i // 3, i % 3]
-        self.index = self.index.reshape(3, 3)
-        self.permutation = perm.reshape(3, 3)
+                self.location = [i // self.size, i % self.size]
+        self.index = self.index.reshape(self.size, self.size)
+        self.permutation = perm.reshape(self.size, self.size)
         return self.state()
 
+    def _draw_with_replacement(self):
+        init = torch.randint(1, self.num_class, (self.num_tile,))
+        loc = torch.randint(0, self.num_tile, ())
+        init[loc] = 0
+        return init
+
     def state(self):
-        canvas = torch.zeros(1, 3*28, 3*28)
-        for i in range(3):
-            for j in range(3):
+        canvas = torch.zeros(1, self.size*28, self.size*28)
+        for i in range(self.size):
+            for j in range(self.size):
                 digit = MNIST_DATA[self.index[i, j]]
                 canvas[0, i*28:(i+1)*28, j*28:(j+1)*28] = digit.clone()
         return canvas
 
     def goal_state(self):
-        canvas = torch.zeros(1, 3*28, 3*28)
-        for i in range(3):
-            for j in range(3):
+        # only valid for 3x3 mnist permuted version
+        canvas = torch.zeros(1, self.size*28, self.size*28)
+        for i in range(self.size):
+            for j in range(self.size):
                 digit_idx = self.permutation[i, j]
-                ii = digit_idx // 3
-                jj = digit_idx % 3
+                ii = digit_idx // self.size
+                jj = digit_idx % self.size
                 digit = MNIST_DATA[self.index[i, j]]
                 canvas[0, ii*28:(ii+1)*28, jj*28:(jj+1)*28] = digit.clone()
         return canvas
 
     def random_goal_state(self):
-        randperm = torch.randperm(9)
-        index = torch.zeros(9, dtype=torch.int64)
-        for i in range(9):
-            digit = randperm[i].item()
-            idx, = torch.where(self.permutation.reshape(-1) == digit)
-            index[i] = self.index.reshape(-1)[idx]
-        index = index.reshape(3, 3)
-        canvas = torch.zeros(1, 3*28, 3*28)
-        for i in range(3):
-            for j in range(3):
+        r = torch.randperm(self.num_tile)
+        index = self.index.reshape(-1)[r]
+        index = index.reshape(self.size, self.size)
+        canvas = torch.zeros(1, self.size*28, self.size*28)
+        for i in range(self.size):
+            for j in range(self.size):
+                digit = MNIST_DATA[index[i, j]]
+                canvas[0, i*28:(i+1)*28, j*28:(j+1)*28] = digit.clone()
+        return canvas
+
+    def avg_goal_state(self, idx):
+        # sigh...
+        r = torch.randperm(self.num_tile)
+        index = self.index.reshape(-1)[r]
+        perm = self.permutation.reshape(-1)[r]
+        zero_index, = torch.where(perm == 0)
+        temp = index[zero_index].item()
+        index[zero_index] = index[idx].item()
+        index[idx] = temp
+
+        index = index.reshape(self.size, self.size)
+        canvas = torch.zeros(1, self.size*28, self.size*28)
+        for i in range(self.size):
+            for j in range(self.size):
                 digit = MNIST_DATA[index[i, j]]
                 canvas[0, i*28:(i+1)*28, j*28:(j+1)*28] = digit.clone()
         return canvas
