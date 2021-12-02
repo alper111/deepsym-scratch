@@ -93,16 +93,16 @@ def default_transform(size, affine, mean=None, std=None):
 
 class TilePuzzleData(torch.utils.data.Dataset):
     def __init__(self, path):
-        self.state = torch.load(os.path.join(path, "tile_state.pt")) / 255.0
-        self.effect = torch.load(os.path.join(path, "tile_effect.pt")) / 255.0
-        self.action = torch.load(os.path.join(path, "tile_action.pt")).float()
+        self.state = torch.load(os.path.join(path, "tile_state.pt"))
+        self.effect = torch.load(os.path.join(path, "tile_effect.pt"))
+        self.action = torch.load(os.path.join(path, "tile_action.pt"))
 
     def __len__(self):
         return len(self.state)
 
     def __getitem__(self, idx):
         sample = {}
-        sample["state"] = self.state[idx]
-        sample["effect"] = self.effect[idx]
-        sample["action"] = self.action[idx]
+        sample["state"] = self.state[idx] / 255.0
+        sample["effect"] = self.effect[idx] / 255.0
+        sample["action"] = self.action[idx].float()
         return sample
