@@ -15,17 +15,13 @@ args = parser.parse_args()
 if not os.path.exists(args.s):
     os.makedirs(args.s)
 
-STATE = torch.load("data/tile_state.pt") / 255.0
-EFFECT = torch.load("data/tile_effect.pt") / 255.0
-ACTION = torch.load("data/tile_action.pt")
-
 BN = True
 NUM_ACTIONS = 4
-NUM_BITS = 13
-NUM_EPOCH = 300
+NUM_BITS = 14
+NUM_EPOCH = 100
 LR = 0.0001
 BATCH_SIZE = 128
-N = STATE.shape[0]
+N = 500000
 LOOP_PER_EPOCH = N // BATCH_SIZE
 
 encoder = torch.nn.Sequential(
