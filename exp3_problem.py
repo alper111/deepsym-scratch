@@ -19,7 +19,7 @@ if os.path.exists(save_name):
 
 BN = True
 NUM_ACTIONS = 4
-NUM_BITS = 14
+NUM_BITS = 13
 SIZE = 3
 
 encoder = torch.nn.Sequential(
@@ -52,7 +52,7 @@ for p in model.encoder.parameters():
 for p in model.decoder.parameters():
     p.requires_grad = False
 
-env = TilePuzzleMNIST(size=SIZE, permutation="replacement")
+env = TilePuzzleMNIST(size=SIZE)
 x_init = env.state().unsqueeze(0)
 
 # generate goal encoding by randomly sampling goals
@@ -78,7 +78,8 @@ for i, z_i in enumerate(z_init):
 print(")", file=open(save_name, "a"))
 print("\t(:goal (and", file=open(save_name, "a"), end="")
 for i, z_i in enumerate(z_goal):
-    if (z_i > 1-tau) or (z_i < tau):
+    if (z_i < (1-tau)) and (z_i > tau):
+        print("This i skipped:", z_i)
         continue
 
     if z_i < 0.5:
@@ -93,9 +94,9 @@ domain_file = os.path.join(args.s, "pdomain_mnist.pddl")
 problem_file = os.path.join(args.s, "problem_mnist.pddl")
 valid, output = planner.find_plan(domain_file, problem_file)
 if valid:
-    print(output.path)
+    print("Valid:", output.path)
 else:
-    print(output)
+    print("Invalid:", output)
 
 fig, ax = plt.subplots(1, 2)
 ax[0].set_title("Initial")
