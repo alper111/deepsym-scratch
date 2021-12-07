@@ -26,7 +26,7 @@ pos_next = []
 force_readings = []
 action = []
 
-for obj_i in [3]:
+for obj_i in range(5):
     for scale in reversed(scales):
         for x in xrng:
             for y in yrng:
@@ -72,7 +72,7 @@ for obj_i in [3]:
                     pos_next.append(env.get_object_poses())
                     action.append(a)
                     env.set_tip_pose([-0.3, -0.1139, 1.1856], wait=5)
-                    env.remove_object(env.generated_objects.pop())
+                    env.remove_object(env.generated_objects[-1])
                     print(force_readings[-1])
                     
 np.save("data/exploration_first/obs_prev.npy", state_prev)
