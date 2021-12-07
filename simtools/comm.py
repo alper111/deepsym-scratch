@@ -141,6 +141,7 @@ class Communication:
     def get_rgb(self):
         code, res, image = sim.simxGetVisionSensorImage(self.client_id, self.rgb_cam, 0, sim.simx_opmode_blocking)
         image = np.array(image, dtype=np.uint8).reshape(res[1], res[0], 3)[::-1] / 255.0
+        image = image[8:120, 8:120]
         image = np.transpose(image, (2, 0, 1))
         return image
 
