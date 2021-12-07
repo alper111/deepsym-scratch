@@ -7,7 +7,7 @@ MNIST_LABELS = torch.load("data/mnist_label.pt")
 
 
 class TilePuzzleMNIST:
-    def __init__(self, permutation=None, size=3, dataset="mnist"):
+    def __init__(self, permutation=None, size=3, dataset="mnist", random=False):
         self.action_names = [
             "move_right",
             "move_up",
@@ -18,13 +18,16 @@ class TilePuzzleMNIST:
         self.index = None
         self.location = None
         self.size = size
+        self.random = random
+        if size > 3:
+            self.permutation = "replacement"
         self.num_tile = size ** 2
         if dataset == "mnist":
             self.num_class = 10
         elif dataset == "emnist":
             self.num_class = 47
 
-        self.reset(permutation=permutation)
+        self.reset(permutation=self.permutation)
 
     def step(self, action):
         row, col = self.location
@@ -79,9 +82,11 @@ class TilePuzzleMNIST:
         for i in range(self.num_tile):
             digit = perm[i].item()
             labels = MNIST_LABELS[digit]
-            # self.index[i] = labels[torch.randint(0, len(labels), ())]
-            # fix the digits for now as in Asai&Fukunaga 2017
-            self.index[i] = labels[0]
+            if self.random:
+                self.index[i] = labels[torch.randint(0, len(labels), ())]
+            else:
+                # fix the digits for now as in Asai&Fukunaga 2017
+                self.index[i] = labels[0]
             if digit == 0:
                 self.location = [i // self.size, i % self.size]
         self.index = self.index.reshape(self.size, self.size)
