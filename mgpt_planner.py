@@ -28,13 +28,26 @@ class PlanOutput:
         output = output[output.index('<begin-session>'):].split('\n')
         n_rounds = int(output[1][output[1].index('=') + 1:])
         row = 4
-        best_score = np.inf
-        best = list()
+        # best_score = np.inf
+        # best = list()
+        plans = {}
         for _ in range(n_rounds):
             row, success, moves = self._extract_round(output, row)
-            if success and len(moves) < best_score:
-                best_score = len(moves)
-                best = moves
+            if success:
+                curr_plan = "\n".join(moves)
+                if curr_plan in plans:
+                    plans[curr_plan] += 1
+                else:
+                    plans[curr_plan] = 1
+            # if success and len(moves) < best_score:
+            #     best_score = len(moves)
+            #     best = moves
+        best_count = 0
+        best = None
+        for key in plans:
+            if plans[key] > best_count:
+                best = str(plans[key]) + " times:\n" + key
+                best_count = plans[key]
         return best
 
     def _extract_round(self, output, row):
