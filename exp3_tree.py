@@ -16,8 +16,8 @@ args = parser.parse_args()
 
 BN = True
 NUM_ACTIONS = 4
-NUM_BITS = 14
-BATCH_SIZE = 1000
+NUM_BITS = 13
+BATCH_SIZE = 500
 
 encoder = torch.nn.Sequential(
     blocks.ConvBlock(in_channels=1, out_channels=64, kernel_size=4, stride=2, padding=1, batch_norm=BN),
@@ -29,6 +29,7 @@ encoder = torch.nn.Sequential(
     blocks.GumbelSigmoidLayer(hard=False, T=1.0)
 )
 
+# 13-bit or 14-bit, 3x3
 decoder = torch.nn.Sequential(
     blocks.MLP([NUM_BITS+NUM_ACTIONS, 512]),
     blocks.Reshape([-1, 512, 1, 1]),
@@ -38,6 +39,28 @@ decoder = torch.nn.Sequential(
     blocks.ConvTransposeBlock(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding=0, batch_norm=BN),
     torch.nn.ConvTranspose2d(in_channels=32, out_channels=1, kernel_size=4, stride=2, padding=1)
 )
+
+# 15-bit, 4x4
+# decoder = torch.nn.Sequential(
+#     blocks.MLP([NUM_BITS+NUM_ACTIONS, 512]),
+#     blocks.Reshape([-1, 512, 1, 1]),
+#     blocks.ConvTransposeBlock(in_channels=512, out_channels=256, kernel_size=7, stride=1, padding=0, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=256, out_channels=128, kernel_size=4, stride=2, padding=1, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=1, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding=1, batch_norm=BN),
+#     torch.nn.ConvTranspose2d(in_channels=32, out_channels=1, kernel_size=4, stride=2, padding=1)
+# )
+
+# 16-bit, 5x5
+# decoder = torch.nn.Sequential(
+#     blocks.MLP([NUM_BITS+NUM_ACTIONS, 512]),
+#     blocks.Reshape([-1, 512, 1, 1]),
+#     blocks.ConvTransposeBlock(in_channels=512, out_channels=256, kernel_size=8, stride=1, padding=0, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=256, out_channels=128, kernel_size=4, stride=2, padding=1, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=0, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding=0, batch_norm=BN),
+#     torch.nn.ConvTranspose2d(in_channels=32, out_channels=1, kernel_size=4, stride=2, padding=1)
+# )
 encoder.to("cuda")
 decoder.to("cuda")
 
@@ -75,7 +98,7 @@ print("X shape:", train_X.shape)
 print("Y shape:", train_Y.shape)
 train_Y = utils.binary_to_decimal_tensor(train_Y)
 
-tree = DecisionTreeClassifier(min_samples_leaf=100)
+tree = DecisionTreeClassifier()
 tree.fit(train_X, train_Y)
 
 preds = []

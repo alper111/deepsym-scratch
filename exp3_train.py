@@ -17,8 +17,8 @@ if not os.path.exists(args.s):
 
 BN = True
 NUM_ACTIONS = 4
-NUM_BITS = 14
-NUM_EPOCH = 100
+NUM_BITS = 13
+NUM_EPOCH = 20
 LR = 0.0001
 BATCH_SIZE = 128
 N = 500000
@@ -34,6 +34,7 @@ encoder = torch.nn.Sequential(
     blocks.GumbelSigmoidLayer(hard=False, T=1.0)
 )
 
+# 13-bit or 14-bit, 3x3
 decoder = torch.nn.Sequential(
     blocks.MLP([NUM_BITS+NUM_ACTIONS, 512]),
     blocks.Reshape([-1, 512, 1, 1]),
@@ -43,6 +44,29 @@ decoder = torch.nn.Sequential(
     blocks.ConvTransposeBlock(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding=0, batch_norm=BN),
     torch.nn.ConvTranspose2d(in_channels=32, out_channels=1, kernel_size=4, stride=2, padding=1)
 )
+
+# 15-bit, 4x4
+# decoder = torch.nn.Sequential(
+#     blocks.MLP([NUM_BITS+NUM_ACTIONS, 512]),
+#     blocks.Reshape([-1, 512, 1, 1]),
+#     blocks.ConvTransposeBlock(in_channels=512, out_channels=256, kernel_size=7, stride=1, padding=0, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=256, out_channels=128, kernel_size=4, stride=2, padding=1, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=1, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding=1, batch_norm=BN),
+#     torch.nn.ConvTranspose2d(in_channels=32, out_channels=1, kernel_size=4, stride=2, padding=1)
+# )
+
+# 16-bit, 5x5
+# decoder = torch.nn.Sequential(
+#     blocks.MLP([NUM_BITS+NUM_ACTIONS, 512]),
+#     blocks.Reshape([-1, 512, 1, 1]),
+#     blocks.ConvTransposeBlock(in_channels=512, out_channels=256, kernel_size=8, stride=1, padding=0, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=256, out_channels=128, kernel_size=4, stride=2, padding=1, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=0, batch_norm=BN),
+#     blocks.ConvTransposeBlock(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding=0, batch_norm=BN),
+#     torch.nn.ConvTranspose2d(in_channels=32, out_channels=1, kernel_size=4, stride=2, padding=1)
+# )
+
 encoder.to("cuda")
 decoder.to("cuda")
 
@@ -51,5 +75,5 @@ model = DeepSymbolGenerator(encoder=encoder, decoder=decoder, subnetworks=[],
 model.print_model()
 
 data = TilePuzzleData("./data")
-loader = torch.utils.data.DataLoader(data, batch_size=BATCH_SIZE)
+loader = torch.utils.data.DataLoader(data, batch_size=BATCH_SIZE, num_workers=12)
 model.train(NUM_EPOCH, loader)
