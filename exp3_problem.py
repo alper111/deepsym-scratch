@@ -1,6 +1,5 @@
 import os
 import argparse
-from copy import deepcopy
 
 import torch
 import matplotlib.pyplot as plt
@@ -78,17 +77,11 @@ for p in model.decoder.parameters():
     p.requires_grad = False
 
 env = TilePuzzleMNIST(size=SIZE)
-# next_env = deepcopy(env)
 x_init = env.state().unsqueeze(0)
 
-# generate a 3-step action result
-# next_env.step(0)
-# next_env.step(1)
-# next_env.step(2)
-
 # generate goal encoding by randomly sampling goals
-# x_goal = next_env.state().unsqueeze(0)
 # x_goal = env.random_goal_state().unsqueeze(0)
+# generate goal encoding by averaging goals
 r_idx = torch.randint(0, 9, ()).item()
 x_goal = torch.stack([env.avg_goal_state(r_idx) for i in range(1000)])
 
