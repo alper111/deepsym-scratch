@@ -14,13 +14,16 @@ class TilePuzzleMNIST:
             "move_left",
             "move_down"
         ]
-        self.permutation = None
         self.index = None
         self.location = None
         self.size = size
         self.random = random
-        if size > 3:
+        if permutation is not None:
+            self.permutation = permutation
+        elif size > 3:
             self.permutation = "replacement"
+        else:
+            self.permutation = None
         self.num_tile = size ** 2
         if dataset == "mnist":
             self.num_class = 10
