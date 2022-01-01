@@ -32,6 +32,7 @@ sample = iter(loader).next()
 objects = sample["state"].reshape(5, 10, 3, 4, 4, opts["size"], opts["size"])
 objects = objects[:, :, 0].reshape(-1, 1, 42, 42)
 colored = [[], [], [], []]
+NUM_OBJECTS = 10
 
 with torch.no_grad():
     done = False
@@ -39,13 +40,13 @@ with torch.no_grad():
     while not done:
         c = model.encode(objects[it].reshape(1, 1, 42, 42)).round()
         cat = int(utils.binary_to_decimal(c[0]))
-        if len(colored[cat]) < 20:
+        if len(colored[cat]) < NUM_OBJECTS:
             colored[cat].append(objects[it].clone())
         it += 1
 
         done = True
         for i in range(4):
-            if len(colored[i]) < 20:
+            if len(colored[i]) < NUM_OBJECTS:
                 done = False
                 break
 
@@ -56,4 +57,4 @@ colored = colored.reshape(-1, 42, 42)
 colored = (colored - colored.min()) / (colored.max() - colored.min())
 cm = plt.cm.plasma
 colored = torch.tensor(cm(colored.numpy()), dtype=torch.float).permute(0, 3, 1, 2)[:, :3]
-torchvision.utils.save_image(colored, "colored-objects.png", nrow=20)
+torchvision.utils.save_image(colored, "colored-objects.png", nrow=NUM_OBJECTS)
