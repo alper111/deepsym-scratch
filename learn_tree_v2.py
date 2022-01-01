@@ -43,18 +43,19 @@ model.print_model()
 X, Y = [], []
 sample = iter(loader).next()
 with torch.no_grad():
-    codes = model.concat(sample).round()
+    codes = model.concat(sample)
+    dist = torch.distributions.Bernoulli(codes)
     for i in range(20):
-        X.append(codes.clone())
+        X.append(codes.round().clone())
     for i in range(20):
-        codes = model.concat(sample).round()
-        effects = binary_to_decimal_tensor(codes[:, :5])
+        sampled_codes = dist.sample()
+        effects = binary_to_decimal_tensor(sampled_codes[:, :5])
         Y.append(effects)
 
 X = torch.cat(X, dim=0)
 Y = torch.cat(Y, dim=0)
-torch.save(X, "tempX.pt")
-torch.save(Y, "tempY.pt")
+# torch.save(X, "tempX.pt")
+# torch.save(Y, "tempY.pt")
 
 tree = DecisionTreeClassifier(min_samples_leaf=100)
 tree.fit(X, Y)
