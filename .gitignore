@@ -152,3 +152,8 @@ setup.cfg
 *.pth
 
 *.sublime-workspace
+runs/*
+runs_back/*
+runs_deterministic/*
+runs_figure/*
+
