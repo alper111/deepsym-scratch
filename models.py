@@ -47,7 +47,7 @@ class DeepSymbolGenerator:
         self.iteration = 0
         self.path = path
 
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
+    def encode(self, x: torch.Tensor, eval_mode=False) -> torch.Tensor:
         """
         Given a state, return its encoding with the current
         encoder (i.e. no subnetwork code).
@@ -63,9 +63,11 @@ class DeepSymbolGenerator:
             The code of the given state.
         """
         h = self.encoder(x.to(self.device))
+        if eval_mode:
+            h = h.round()
         return h
 
-    def concat(self, sample: dict) -> torch.Tensor:
+    def concat(self, sample: dict, eval_mode=False) -> torch.Tensor:
         """
         Given a sample, return the concatenation of the encoders'
         output and the action vector.
@@ -85,10 +87,10 @@ class DeepSymbolGenerator:
         """
         h = []
         x = sample["state"]
-        h.append(self.encode(x))
+        h.append(self.encode(x, eval_mode))
         for network in self.subnetworks:
             with torch.no_grad():
-                h.append(network.encode(x))
+                h.append(network.encode(x, eval_mode))
         h.append(sample["action"].to(self.device))
         z = torch.cat(h, dim=-1)
         return z
@@ -110,8 +112,8 @@ class DeepSymbolGenerator:
         e = self.decoder(z)
         return e
 
-    def forward(self, sample):
-        z = self.concat(sample)
+    def forward(self, sample, eval_mode=False):
+        z = self.concat(sample, eval_mode)
         e = self.decode(z)
         return z, e
 
@@ -325,3 +327,44 @@ class EffectRegressorMLP:
         self.encoder2.train()
         self.decoder1.train()
         self.decoder2.train()
+
+
+class RBM(torch.nn.Module):
+
+    def __init__(self, v_dim, h_dim):
+        super(RBM, self).__init__()
+        self.v_dim = v_dim
+        self.h_dim = h_dim
+        self.w = torch.nn.Parameter(torch.nn.init.xavier_normal(torch.empty(v_dim, h_dim)))
+        self.a = torch.nn.Parameter(torch.zeros(v_dim))
+        self.b = torch.nn.Parameter(torch.zeros(h_dim))
+
+    def sample_h(self, v):
+        prob = torch.sigmoid(v @ self.w + self.b)
+        with torch.no_grad():
+            sample = prob.bernoulli()
+        return prob, sample
+
+    def sample_v(self, h):
+        prob = torch.sigmoid(h @ self.w.t() + self.a)
+        with torch.no_grad():
+            sample = prob.bernoulli()
+        return prob, sample
+
+    def energy(self, v, h):
+        return -(v @ self.a + h @ self.b + ((v @ self.w)*h).sum(dim=-1)) 
+
+    def gibbs_k(self, h, k, prob=False):
+        for _ in range(k):
+            v_p, v = self.sample_v(h)
+            h_p, h = self.sample_h(v)
+        if prob:
+            return v_p, h_p
+        else:
+            return v, h
+
+    def forward(self, v):
+        return self.sample_h(v)
+
+    def extra_repr(self):
+        return "v_dim={}, h_dim={}".format(self.v_dim, self.h_dim)
