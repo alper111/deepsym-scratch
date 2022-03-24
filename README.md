@@ -1,4 +1,4 @@
-# End-to-end Deep Symbol Generation and Rule Learning from Unsupervised Continuous Robot Interaction for Planning
+# DeepSym: Deep Symbol Generation and Rule Learning from Unsupervised Continuous Robot Interaction for Planning
 
 ## Install python3 requirements
 ```bash
