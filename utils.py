@@ -317,11 +317,18 @@ def binary_to_decimal_tensor(x):
     return dec_tensor
 
 
+# def in_array(element, array):
+#     element_hash = hash(element)
+#     for idx in range(len(array)):
+#         if element_hash == hash(array[idx]):
+#             return True, idx
+#     return False, None
+
+
 def in_array(element, array):
-    element_hash = hash(element)
-    for idx in range(len(array)):
-        if element_hash == hash(array[idx]):
-            return True, idx
+    for i, e_i in enumerate(array):
+        if element.is_equal(e_i):
+            return True, i
     return False, None
 
 

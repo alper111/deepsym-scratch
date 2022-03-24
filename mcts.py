@@ -1,4 +1,5 @@
 import time
+import uuid
 from copy import deepcopy
 
 import torch
@@ -8,8 +9,8 @@ import utils
 
 
 class MCTSNode:
-    def __init__(self, parent, state, actions, forward_fn):
-        self.name = "node" + str(time.time_ns())
+    def __init__(self, parent, state, forward_fn):
+        self.name = uuid.uuid4().hex
         self.parent = parent
         self.state = state
         self.count = 0
@@ -20,23 +21,41 @@ class MCTSNode:
             self.actions = None
             self.children = None
         else:
-            self.actions = actions
-            self.children = [None] * len(actions)
+            self.actions = state.get_available_actions()
+            self.children = [None] * len(self.actions)
 
-    def run(self, iters, batch_size=1):
+    def run(self, iter_limit, time_limit, default_depth_limit=10, default_batch_size=1):
         i = 0
-        while i < iters:
+        start = time.time()
+        end = time.time()
+        time_elapsed = end - start
+        start_node_count, _ = self._tree_stats()
+        while (i < iter_limit) and (time_elapsed < time_limit):
             v = self._tree_policy()
             reward = 0.0
-            for _ in range(batch_size):
-                reward += v._default_policy()
-            reward /= batch_size
+
+            # sequential
+            for _ in range(default_batch_size):
+                reward += v._default_policy(default_depth_limit)
+            reward /= default_batch_size
+
             v._backup(reward)
+
             i += 1
-        return self.children_ucb1()
+            end = time.time()
+            time_elapsed = end - start
+            if i % 100 == 0:
+                node_count, depth = self._tree_stats()
+                print(f"Tree depth={depth}, node count={node_count}, node/sec={(node_count-start_node_count)/time_elapsed:.2f}, best reward={self.reward/self.count}")
+
+        return self.children_yield()
 
     def best_child_idx(self):
         idx = np.argmax(self.children_ucb1())
+        return idx
+
+    def best_child_for_plan(self):
+        idx = np.argmax(self.children_yield())
         return idx
 
     def children_ucb1(self):
@@ -92,14 +111,14 @@ class MCTSNode:
 
     def plan(self):
         if self.is_terminal:
-            return self.state, "Finish, p: 1.0 -> [" + ", ".join(self.state.stack) + "]", 1.0
-        idx = self.best_child_idx()
+            return self.state, "", [], 1.0
+        idx = self.best_child_for_plan()
         if self.children[idx] is None:
             print("Plan not found.")
-            return self.state, self.actions[idx], 1.0
+            return self.state, "", [(idx, 0)], 1.0
         elif len(self.children[idx]) == 1:
-            child_state, child_plan, child_prob = self.children[idx][0].plan()
-            return child_state, self.actions[idx]+", p: 1.0 -> [" + ", ".join(self.children[idx][0].state.stack) + "]\n"+child_plan, child_prob
+            child_state, child_plan_txt, child_plan, child_prob = self.children[idx][0].plan()
+            return child_state, "-".join(filter(None, [self.actions[idx], child_plan_txt])), [(idx, 0)]+child_plan, child_prob
         else:
             probs = []
             for out in self.children[idx]:
@@ -108,9 +127,8 @@ class MCTSNode:
             probs = probs / probs.sum()
             prob_max = np.argmax(probs)
             p = np.max(probs)
-            child_state, child_plan, child_prob = self.children[idx][prob_max].plan()
-            return child_state, self.actions[idx] + ", p: %.3f -> [" % p + ", ".join(self.children[idx][prob_max].state.stack) \
-                + "]\n"+child_plan, p*child_prob
+            child_state, child_plan_txt, child_plan, child_prob = self.children[idx][prob_max].plan()
+            return child_state, "-".join(filter(None, [self.actions[idx], child_plan_txt])), [(idx, prob_max)]+child_plan, p*child_prob
 
     def _expand(self):
         idx = self.children.index(None)
@@ -119,7 +137,6 @@ class MCTSNode:
         next_state = self._forward_fn.forward(self.state, action)
         self.children[idx] = [MCTSNode(parent=self,
                                        state=next_state,
-                                       actions=next_state.get_available_actions(),
                                        forward_fn=self._forward_fn)]
         ############
         return self.children[idx][0]
@@ -140,20 +157,19 @@ class MCTSNode:
             if not result:
                 self.children[idx].append(MCTSNode(parent=self,
                                                    state=next_state,
-                                                   actions=next_state.get_available_actions(),
                                                    forward_fn=self._forward_fn))
                 return self.children[idx][-1]._tree_policy()
             else:
                 return self.children[idx][out_idx]._tree_policy()
 
-    def _default_policy(self):
-        if not self.is_terminal:
+    def _default_policy(self, depth_limit):
+        if (not self.is_terminal) and (depth_limit > 0):
             random_action = np.random.choice(self.actions)
             # ACT HERE #
             next_state = self._forward_fn.forward(self.state, random_action)
-            v = MCTSNode(parent=None, state=next_state, actions=next_state.get_available_actions(), forward_fn=self._forward_fn)
+            v = MCTSNode(parent=None, state=next_state, forward_fn=self._forward_fn)
             ############
-            return v._default_policy()
+            return v._default_policy(depth_limit-1)
         else:
             return self.state.reward()
 
@@ -191,6 +207,109 @@ class MCTSNode:
         string += "Count: " + str(self.count) + "\n"
         string += "Terminal: " + str(self.is_terminal)
         return string
+
+    def _tree_stats(self):
+        if self.is_terminal:
+            return 1, 0
+
+        children_depths = []
+        total_nodes = 1
+        for c in self.children:
+            if c is None:
+                children_depths.append(0)
+            elif len(c) == 1:
+                nodes, depth = c[0]._tree_stats()
+                children_depths.append(depth)
+                total_nodes += nodes
+            else:
+                gchild_depths = []
+                for c_i in c:
+                    nodes, depth = c_i._tree_stats()
+                    gchild_depths.append(depth)
+                    total_nodes += nodes
+                children_depths.append(max(gchild_depths)+1)
+        return total_nodes, max(children_depths)+1
+
+
+class MCTSState:
+    def __init__(self, goal):
+        pass
+
+    def reward(self):
+        pass
+
+    def get_available_actions(self):
+        pass
+
+    def is_terminal(self):
+        pass
+
+    def __repr__(self):
+        pass
+
+    def is_equal(self, other):
+        pass
+
+
+class MCTSForward:
+    def __init__(self):
+        pass
+
+    def forward(self, state, action):
+        pass
+
+
+class MNISTState(MCTSState):
+    def __init__(self, precond, goal):
+        self.precond = precond
+        self.goal = goal
+        self.cossim = torch.nn.CosineSimilarity(dim=-1)
+
+    def reward(self):
+        if self.is_terminal():
+            return 1000
+        else:
+            return 10*self.cossim(self.precond.flatten(), self.goal.flatten())
+
+    def get_available_actions(self):
+        return ["move_right", "move_up", "move_left", "move_down"]
+
+    def is_terminal(self):
+        if self.cossim(self.precond.flatten(), self.goal.flatten()) > 0.95:
+            return True
+        else:
+            return False
+
+    def __repr__(self):
+        return self.precond.__repr__()
+
+    def is_equal(self, other):
+        if self.cossim(self.precond.flatten(), other.precond.flatten()) > 0.95:
+            return True
+        else:
+            return False
+
+
+class MNISTForward(MCTSForward):
+    def __init__(self, deepsym_module):
+        self.model = deepsym_module
+        self.action_dict = {
+            "move_right": torch.tensor([[1., 0., 0., 0.]], device=self.model.device),
+            "move_up": torch.tensor([[0., 1., 0., 0.]], device=self.model.device),
+            "move_left": torch.tensor([[0., 0., 1., 0.]], device=self.model.device),
+            "move_down": torch.tensor([[0., 0., 0., 1.]], device=self.model.device)
+        }
+
+    def forward(self, state, action):
+        state_dict = {
+            "state": state.precond,
+            "action": self.action_dict[action]
+        }
+        _, effect = self.model.forward(state_dict, eval_mode=True)
+
+        new_precond = (state.precond + effect).clamp(0., 1.)
+        new_state = MNISTState(new_precond, state.goal)
+        return new_state
 
 
 class State:
