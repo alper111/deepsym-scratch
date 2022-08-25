@@ -1,3 +1,6 @@
+"""
+Learn a decision tree from DeepSym symbols.
+"""
 import pickle
 import argparse
 import os

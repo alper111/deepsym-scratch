@@ -1,3 +1,6 @@
+"""
+Collect MNIST 8-tile experience.
+"""
 import torch
 from envs import TilePuzzleMNIST
 

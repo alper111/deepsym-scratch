@@ -1,3 +1,7 @@
+"""
+Cluster the effect set and save the centroids to the save folder
+in the option file.
+"""
 import argparse
 import os
 import yaml

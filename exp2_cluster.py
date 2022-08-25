@@ -1,3 +1,6 @@
+"""
+Record the symbols of OCEC.
+"""
 import os
 import argparse
 import time

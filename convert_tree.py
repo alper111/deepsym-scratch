@@ -1,3 +1,6 @@
+"""
+Convert the learned decision tree to PDDL rules.
+"""
 import os
 import argparse
 import yaml

@@ -1,3 +1,6 @@
+"""
+Translate decision tree rules to PDDL statements.
+"""
 import os
 import argparse
 import pickle

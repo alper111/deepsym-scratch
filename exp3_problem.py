@@ -1,3 +1,6 @@
+"""
+Generate and convert MNIST 8-tile problem into PDDL problem for DeepSym.
+"""
 import os
 import argparse
 from copy import deepcopy

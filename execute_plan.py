@@ -1,3 +1,6 @@
+"""
+Execute a generated plan in Block Tower environment.
+"""
 import argparse
 from simtools.rosutils import RosNode
 

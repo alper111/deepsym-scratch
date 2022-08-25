@@ -1,3 +1,6 @@
+"""
+Learn a decision tree from SAE symbols.
+"""
 import pickle
 import argparse
 import os

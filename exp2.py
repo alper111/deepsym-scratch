@@ -1,3 +1,6 @@
+"""
+Record the symbols of DeepSym.
+"""
 import os
 import argparse
 import time

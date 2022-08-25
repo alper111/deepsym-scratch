@@ -1,3 +1,6 @@
+"""
+Check the decision tree accuracy of DeepSym model.
+"""
 import os
 import argparse
 import time
