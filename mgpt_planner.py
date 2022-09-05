@@ -7,7 +7,6 @@ Thanks Steven!
 
 import os
 import subprocess
-import numpy as np
 from subprocess import Popen, PIPE
 from time import sleep
 from typing import Tuple, Any, List
